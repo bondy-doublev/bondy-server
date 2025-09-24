@@ -1,4 +1,4 @@
-package org.example.commonweb.DTO;
+package org.example.commonweb.DTO.core;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.*;
@@ -11,8 +11,6 @@ import lombok.experimental.FieldDefaults;
 @FieldDefaults(level = AccessLevel.PRIVATE)
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class ErrorResponse {
-    final boolean success = false;
-    int code;
     String type;
     String message;
 }

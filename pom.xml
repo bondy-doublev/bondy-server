@@ -16,6 +16,7 @@
     <spring-boot.version>3.3.2</spring-boot.version>
     <spring-cloud.version>2023.0.3</spring-cloud.version>
     <flyway-pg.version>11.11.2</flyway-pg.version>
+    <springdoc.version>2.6.0</springdoc.version>
   </properties>
 
   <!-- Quản lý version tập trung -->
@@ -70,7 +71,7 @@
       <dependency>
         <groupId>org.flywaydb</groupId>
         <artifactId>flyway-core</artifactId>
-        <!-- version theo BOM Boot -->
+        <version>${flyway-pg.version}</version>
       </dependency>
       <dependency>
         <groupId>org.flywaydb</groupId>
@@ -82,12 +83,22 @@
         <artifactId>lombok</artifactId>
         <version>1.18.34</version>
       </dependency>
+
+      <dependency>
+        <groupId>org.springdoc</groupId>
+        <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+        <version>${springdoc.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.springdoc</groupId>
+        <artifactId>springdoc-openapi-starter-webflux-ui</artifactId>
+        <version>${springdoc.version}</version>
+      </dependency>
     </dependencies>
   </dependencyManagement>
 
   <!-- KHÔNG ép dependencies chung vào tất cả module -->
   <dependencies>
-    <!-- để trống hoặc chỉ để những lib thật sự mọi module đều cần -->
   </dependencies>
 
   <modules>
