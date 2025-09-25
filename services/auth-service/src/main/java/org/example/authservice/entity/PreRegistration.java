@@ -5,7 +5,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
-import org.example.commonweb.entity.BaseEntity;
+import org.example.authservice.entity.Base.BaseEntity;
 import org.hibernate.annotations.DynamicInsert;
 
 import java.time.LocalDateTime;

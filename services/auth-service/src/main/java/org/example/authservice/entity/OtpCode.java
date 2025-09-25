@@ -1,6 +1,6 @@
 package org.example.authservice.entity;
 
-import org.example.commonweb.entity.BaseEntity;
+import org.example.authservice.entity.Base.BaseEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;

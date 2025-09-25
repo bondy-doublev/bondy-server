@@ -1,4 +1,4 @@
-package org.example.commonweb.entity;
+package org.example.authservice.entity.Base;
 
 import jakarta.persistence.*;
 import lombok.AccessLevel;
