@@ -1,0 +1,27 @@
+server:
+  port: 8083
+
+spring:
+  application:
+    name: upload-service
+  config:
+    import: optional:configserver:http://localhost:8888
+  servlet:
+    multipart:
+      max-file-size: 50MB       # Giới hạn dung lượng 1 file
+      max-request-size: 60MB    # Giới hạn tổng dung lượng nhiều file trong 1 request
+
+cloudinary:
+  cloud_name: dukelewis-workspace
+  api_key: "686797725766481"
+  api_secret: "w0edRkgKHZPcM2uTX-bLfzbHWY0"
+
+upload:
+  path: ./uploads
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka/
+  instance:
+    prefer-ip-address: true

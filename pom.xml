@@ -17,6 +17,8 @@
     <spring-cloud.version>2023.0.3</spring-cloud.version>
     <flyway-pg.version>11.11.2</flyway-pg.version>
     <springdoc.version>2.6.0</springdoc.version>
+    <maven.compiler.source>21</maven.compiler.source>
+    <maven.compiler.target>21</maven.compiler.target>
   </properties>
 
   <!-- Quản lý version tập trung -->
@@ -108,6 +110,8 @@
     <module>libs/common-web</module>
     <module>services/auth-service</module>
     <module>services/mail-service</module>
+    <module>services/upload-service</module>
+    <module>services/notification-service</module>
   </modules>
 
   <!-- Quản lý plugin chung, con tự “kích hoạt” khi cần -->
