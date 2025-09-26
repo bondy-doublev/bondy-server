@@ -4,6 +4,7 @@ import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jws;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
+import org.example.gateway.property.PropsConfig;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import javax.crypto.SecretKey;
@@ -13,10 +14,9 @@ public class JwtService {
     private final String secret;
     private final String issuer;
 
-    public JwtService(@Value("${jwt.secret}") String secret,
-                      @Value("${jwt.issuer}") String issuer) {
-        this.secret = secret;
-        this.issuer = issuer;
+    public JwtService(PropsConfig props) {
+        this.secret = props.getJwt().getSecret();
+        this.issuer = props.getJwt().getIssuer();
     }
 
     private SecretKey getKey() {

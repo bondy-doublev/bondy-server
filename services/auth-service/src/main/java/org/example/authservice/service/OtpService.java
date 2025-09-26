@@ -1,7 +1,7 @@
 package org.example.authservice.service;
 
 import org.example.authservice.entity.OtpCode;
-import org.example.authservice.properties.AppProperties;
+import org.example.authservice.property.AppProperties;
 import org.example.authservice.repository.OtpRepository;
 import org.example.authservice.service.interfaces.IOtpService;
 import jakarta.transaction.Transactional;

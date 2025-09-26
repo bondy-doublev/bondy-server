@@ -1,4 +1,4 @@
-package org.example.authservice.properties;
+package org.example.authservice.property;
 
 import lombok.AccessLevel;
 import lombok.Data;
@@ -14,6 +14,7 @@ public class AppProperties {
     String environment;
     final User user = new User();
     final Otp otp = new Otp();
+    final Jwt jwt = new Jwt();
 
     @Data
     public static class User {
@@ -24,5 +25,13 @@ public class AppProperties {
     public static class Otp {
         private int ttlMinutes;
         private int maxAttempts;
+    }
+
+    @Data
+    public static class Jwt {
+        private String secret;
+        private String issuer;
+        private long accessTtlSec;
+        private long refreshTtlSec;
     }
 }

@@ -7,7 +7,7 @@ import org.example.authservice.DTO.request.RegisterRequest;
 import org.example.authservice.DTO.response.AuthResponse;
 import org.example.authservice.DTO.response.MessageResponse;
 import org.example.authservice.entity.*;
-import org.example.authservice.properties.AppProperties;
+import org.example.authservice.property.AppProperties;
 import org.example.authservice.repository.PreRegRepository;
 import org.example.authservice.repository.RefreshTokenRepository;
 import org.example.authservice.repository.UserRepository;
@@ -26,8 +26,6 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
-import java.util.Locale;
-import java.util.Map;
 import java.util.UUID;
 
 @Service

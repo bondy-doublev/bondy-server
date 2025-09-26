@@ -21,6 +21,7 @@ public class PropsConfig {
 
     public static class Jwt {
         private String secret;
+        private String issuer;
         private List<String> publicPaths;
 
         public String getSecret() {
@@ -28,6 +29,13 @@ public class PropsConfig {
         }
         public void setSecret(String secret) {
             this.secret = secret;
+        }
+
+        public String getIssuer() {
+            return issuer;
+        }
+        public void setIssuer(String issuer) {
+            this.issuer = issuer;
         }
 
         public List<String> getPublicPaths() {
