@@ -1,5 +1,6 @@
 package org.example.authservice.service;
 
+import org.example.authservice.client.MailClient;
 import org.example.authservice.config.security.TokenSigner;
 import org.example.authservice.DTO.request.LoginRequest;
 import org.example.authservice.DTO.request.OAuth2Request;
@@ -7,7 +8,7 @@ import org.example.authservice.DTO.request.RegisterRequest;
 import org.example.authservice.DTO.response.AuthResponse;
 import org.example.authservice.DTO.response.MessageResponse;
 import org.example.authservice.entity.*;
-import org.example.authservice.property.AppProperties;
+import org.example.authservice.property.PropsConfig;
 import org.example.authservice.repository.PreRegRepository;
 import org.example.authservice.repository.RefreshTokenRepository;
 import org.example.authservice.repository.UserRepository;
@@ -17,15 +18,15 @@ import jakarta.transaction.Transactional;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
-import org.example.commonweb.enums.Action;
-import org.example.commonweb.enums.ErrorCode;
-import org.example.commonweb.enums.Provider;
-import org.example.commonweb.enums.Role;
+import org.example.commonweb.DTO.request.MailRequest;
+import org.example.commonweb.enums.*;
 import org.example.commonweb.exception.AppException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.Locale;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -39,8 +40,9 @@ public class AuthService implements IAuthService {
 
     PasswordEncoder passwordEncoder;
     TokenSigner tokenSigner;
+    MailClient mailClient;
 
-    AppProperties props;
+    PropsConfig props;
 
     @Override
     @Transactional
@@ -165,20 +167,18 @@ public class AuthService implements IAuthService {
 
         IOtpService.OtpResult otp = otpService.generateOtpCode("pre_registration", preReg.getId(), Action.REGISTER.name());
 
-//        MailRequest mail = MailRequest.builder()
-//                .to(preReg.getEmail())
-//                .template(MailPurpose.OTP_REGISTRATION.template)
-//                .subject(props.getMail().getSubjects().getOrDefault(MailPurpose.OTP_REGISTRATION.name().toLowerCase(), null))
-//                .locale(Locale.getDefault())
-//                .model(Map.of(
-//                        "firstName", preReg.getFirstName(),
-//                        "otp", otp.raw(),
-//                        "expiresMinutes", 5,
-//                        "supportEmail", props.getMail().getReplyTo()
-//                ))
-//                .build();
-//
-//        mailService.send(mail);
+        MailRequest mail = MailRequest.builder()
+                .to(preReg.getEmail())
+                .template(MailPurpose.OTP_REGISTRATION.template)
+                .locale(Locale.getDefault())
+                .model(Map.of(
+                        "firstName", preReg.getFirstName(),
+                        "otp", otp.raw(),
+                        "expiresMinutes", 5
+                ))
+                .build();
+
+        mailClient.send(mail);
 
         return new MessageResponse("OTP Code sent to your email.");
     }
@@ -241,38 +241,32 @@ public class AuthService implements IAuthService {
     }
 
     private void sendRegistrationWelcomeMail(User user) {
-//        MailRequest mail = MailRequest.builder()
-//                .to(user.getEmail())
-//                .template(MailPurpose.WELCOME.template)
-//                .subject(props.getMail().getSubjects().getOrDefault("welcome", null))
-//                .locale(Locale.getDefault())
-//                .model(Map.of(
-//                        "firstName", user.getFirstName(),
-//                        "email", user.getEmail(),
-//                        "loginUrl", props.getMail().getBaseUrl() + "/login",
-//                        "supportEmail", props.getMail().getReplyTo()
-//                ))
-//                .build();
-//
-//        mailService.send(mail);
+        MailRequest mail = MailRequest.builder()
+                .to(user.getEmail())
+                .template(MailPurpose.WELCOME.template)
+                .locale(Locale.getDefault())
+                .model(Map.of(
+                        "firstName", user.getFirstName(),
+                        "email", user.getEmail()
+                ))
+                .build();
+
+        mailClient.send(mail);
     }
 
     private void sendWelcomeMail(User user, String rawPassword, Provider provider) {
-//        MailRequest mail = MailRequest.builder()
-//                .to(user.getEmail())
-//                .template(MailPurpose.OAUTH2_WELCOME.template)
-//                .subject(props.getMail().getSubjects().getOrDefault("welcome", null))
-//                .locale(Locale.getDefault())
-//                .model(Map.of(
-//                        "firstName", user.getFirstName(),
-//                        "provider", provider.name(),
-//                        "email", user.getEmail(),
-//                        "password", rawPassword,
-//                        "changePasswordUrl", props.getMail().getBaseUrl() + "/change-password",
-//                        "supportEmail", props.getMail().getReplyTo()
-//                ))
-//                .build();
-//
-//        mailService.send(mail);
+        MailRequest mail = MailRequest.builder()
+                .to(user.getEmail())
+                .template(MailPurpose.OAUTH2_WELCOME.template)
+                .locale(Locale.getDefault())
+                .model(Map.of(
+                        "firstName", user.getFirstName(),
+                        "provider", provider.name(),
+                        "email", user.getEmail(),
+                        "password", rawPassword
+                ))
+                .build();
+
+        mailClient.send(mail);
     }
 }

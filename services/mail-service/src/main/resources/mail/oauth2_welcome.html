@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{_layout :: body(~{::body})}">
+<body>
+<div style="padding:24px; font-family: Arial, sans-serif; color:#333;">
+    <p>Hi <b th:text="${firstName}">User</b>,</p>
+
+    <p>
+        You have successfully signed in with
+        <b th:text="${provider}">Google</b>.
+    </p>
+
+    <p>
+        For your convenience, we have also created a <b>local account</b> in our system.
+        Here are your login details:
+    </p>
+
+    <div style="margin:16px 0; padding:12px; background:#f7f7f7; border:1px solid #ddd; border-radius:6px;">
+        <p>Email: <b th:text="${email}">user@example.com</b></p>
+        <p>Temporary Password:
+            <b style="font-size:18px; color:#d9534f;" th:text="${password}">John12345</b>
+        </p>
+    </div>
+
+    <p>
+        ⚠️ For your security, please change this password immediately after logging in.
+    </p>
+
+    <p style="margin-top:32px;">Thank you,<br/>The Bondy Team</p>
+</div>
+</body>
+</html>

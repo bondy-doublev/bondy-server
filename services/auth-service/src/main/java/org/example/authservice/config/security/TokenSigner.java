@@ -5,8 +5,7 @@ import io.jsonwebtoken.security.Keys;
 import lombok.AccessLevel;
 import lombok.experimental.FieldDefaults;
 import org.example.authservice.entity.User;
-import org.example.authservice.property.AppProperties;
-import org.springframework.beans.factory.annotation.Value;
+import org.example.authservice.property.PropsConfig;
 import org.springframework.stereotype.Component;
 
 import javax.crypto.SecretKey;
@@ -20,7 +19,7 @@ public class TokenSigner {
     String issuer;
     long accessTtlSec;
 
-    public TokenSigner(AppProperties props) {
+    public TokenSigner(PropsConfig props) {
         this.secret = props.getJwt().getSecret();
         this.issuer = props.getJwt().getIssuer();
         this.accessTtlSec = props.getJwt().getAccessTtlSec();

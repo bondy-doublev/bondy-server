@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{_layout :: body(~{::body})}">
+<body>
+<div style="padding:24px; font-family: Arial, sans-serif; color:#333;">
+    <p>Hi <b th:text="${firstName}">User</b>,</p>
+
+    <p>Welcome to <b>Bondy</b>! Your account has been successfully created.</p>
+
+    <div style="margin:16px 0; padding:12px; background:#f7f7f7; border:1px solid #ddd; border-radius:6px;">
+        <p>Email: <b th:text="${email}">user@example.com</b></p>
+    </div>
+
+    <p style="margin-top:32px;">Thanks,<br/>The Bondy Team</p>
+</div>
+</body>
+</html>

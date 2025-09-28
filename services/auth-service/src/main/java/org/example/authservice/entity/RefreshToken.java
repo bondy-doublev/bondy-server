@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 import org.example.authservice.entity.Base.BaseEntity;
+import org.hibernate.annotations.DynamicInsert;
 
 import java.time.LocalDateTime;
 
@@ -12,6 +13,7 @@ import java.time.LocalDateTime;
 @Builder
 @Entity
 @Table(name = "refresh_tokens")
+@DynamicInsert
 @FieldDefaults(level = AccessLevel.PRIVATE)
 @NoArgsConstructor
 @AllArgsConstructor
@@ -23,7 +25,7 @@ public class RefreshToken extends BaseEntity {
 
     String token;
 
-    Boolean revoked;
+    Boolean revoked = false;
 
     @Column(name = "revoked_at")
     LocalDateTime revokedAt;

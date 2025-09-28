@@ -8,7 +8,7 @@ spring:
     config:
       server:
         git:
-          uri: https://github.com/bondy-doublev/bondy-config.git
+          uri: ${GIT_URI}
           default-label: main
           clone-on-start: true
           username: ${GIT_USERNAME}

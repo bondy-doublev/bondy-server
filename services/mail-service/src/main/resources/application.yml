@@ -3,3 +3,19 @@ spring:
     name: mail-service
   config:
     import: optional:configserver:http://localhost:8888
+  mail:
+    host: ${SMTP_HOST:localhost}
+    port: ${SMTP_PORT:1025}
+    username: ${SMTP_USER:}
+    password: ${SMTP_PASS:}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+            required: true
+          ssl:
+            protocols: TLSv1.2
+  thymeleaf:
+    check-template-location: false

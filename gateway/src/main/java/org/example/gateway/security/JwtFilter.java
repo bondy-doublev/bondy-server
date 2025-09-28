@@ -85,7 +85,7 @@ public class JwtFilter implements GlobalFilter {
     private void stripSensitiveHeaders(HttpHeaders h) {
         h.remove("X-User-Id");
         h.remove("X-User-Role");
-        h.remove("X-User-Roles"); // giữ để tương thích ngược nếu có nơi dùng key cũ
+        h.remove("X-User-Roles");
         h.remove("X-Tenant");
         h.remove("X-Auth-By");
     }

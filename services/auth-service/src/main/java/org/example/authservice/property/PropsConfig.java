@@ -10,11 +10,24 @@ import org.springframework.stereotype.Component;
 @Component
 @ConfigurationProperties(prefix = "app")
 @FieldDefaults(level = AccessLevel.PRIVATE)
-public class AppProperties {
+public class PropsConfig {
     String environment;
+    final Gateway gateway = new Gateway();
+    final ApiKey apiKey = new ApiKey();
     final User user = new User();
     final Otp otp = new Otp();
     final Jwt jwt = new Jwt();
+
+    @Data
+    public static class ApiKey {
+        private String header;
+        private String internal;
+    }
+
+    @Data
+    public static class Gateway {
+        private String url;
+    }
 
     @Data
     public static class User {

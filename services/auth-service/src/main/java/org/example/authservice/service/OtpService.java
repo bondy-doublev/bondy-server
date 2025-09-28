@@ -1,7 +1,7 @@
 package org.example.authservice.service;
 
 import org.example.authservice.entity.OtpCode;
-import org.example.authservice.property.AppProperties;
+import org.example.authservice.property.PropsConfig;
 import org.example.authservice.repository.OtpRepository;
 import org.example.authservice.service.interfaces.IOtpService;
 import jakarta.transaction.Transactional;
@@ -22,7 +22,7 @@ public class OtpService implements IOtpService {
     OtpRepository otpRepo;
     PasswordEncoder passwordEncoder;
 
-    AppProperties props;
+    PropsConfig props;
 
     @Override
     public OtpResult generateOtpCode(String subjectType, Long subjectId, String purpose) {
