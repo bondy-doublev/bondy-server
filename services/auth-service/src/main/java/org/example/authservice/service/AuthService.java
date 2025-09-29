@@ -1,7 +1,7 @@
 package org.example.authservice.service;
 
 import org.example.authservice.client.MailClient;
-import org.example.authservice.config.security.TokenSigner;
+import org.example.authservice.config.security.JwtService;
 import org.example.authservice.DTO.request.LoginRequest;
 import org.example.authservice.DTO.request.OAuth2Request;
 import org.example.authservice.DTO.request.RegisterRequest;
@@ -39,7 +39,7 @@ public class AuthService implements IAuthService {
     OtpService otpService;
 
     PasswordEncoder passwordEncoder;
-    TokenSigner tokenSigner;
+    JwtService tokenSigner;
     MailClient mailClient;
 
     PropsConfig props;
@@ -174,7 +174,7 @@ public class AuthService implements IAuthService {
                 .model(Map.of(
                         "firstName", preReg.getFirstName(),
                         "otp", otp.raw(),
-                        "expiresMinutes", 5
+                        "expiresMinutes", props.getOtp().getTtlMinutes()
                 ))
                 .build();
 

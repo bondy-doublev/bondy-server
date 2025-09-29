@@ -4,6 +4,8 @@ import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jws;
 import io.jsonwebtoken.JwtException;
 import org.example.gateway.property.PropsConfig;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.cloud.gateway.filter.GatewayFilterChain;
 import org.springframework.cloud.gateway.filter.GlobalFilter;
 import org.springframework.core.Ordered;
@@ -21,6 +23,7 @@ import java.util.Objects;
 @Component
 @Order(Ordered.HIGHEST_PRECEDENCE)
 public class JwtFilter implements GlobalFilter {
+    private static final Logger log = LoggerFactory.getLogger(JwtFilter.class);
     private final JwtService jwtService;
     private final AntPathMatcher matcher = new AntPathMatcher();
     private final List<String> publicPaths;
@@ -57,7 +60,7 @@ public class JwtFilter implements GlobalFilter {
         try {
             jws = jwtService.validate(token);
         } catch (JwtException e) {
-            return FilterUtil.unauthorized(exchange, "Invalid token");
+            return FilterUtil.unauthorized(exchange, e.getMessage());
         }
 
         Claims claims = jws.getPayload();

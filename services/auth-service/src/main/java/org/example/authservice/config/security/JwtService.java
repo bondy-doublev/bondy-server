@@ -14,15 +14,16 @@ import java.util.Date;
 
 @Component
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
-public class TokenSigner {
+public class JwtService {
     String secret;
     String issuer;
     long accessTtlSec;
 
-    public TokenSigner(PropsConfig props) {
+    public JwtService(PropsConfig props) {
         this.secret = props.getJwt().getSecret();
         this.issuer = props.getJwt().getIssuer();
-        this.accessTtlSec = props.getJwt().getAccessTtlSec();
+        this.accessTtlSec = props.getEnvironment().equals("production")
+                ? props.getJwt().getAccessTtlSec() : 1000000;
     }
 
     private SecretKey getKey() {
@@ -42,7 +43,7 @@ public class TokenSigner {
                 .issuedAt(Date.from(now))
                 .expiration(Date.from(now.plusSeconds(accessTtlSec)))
                 .and()
-                .signWith(getKey(), Jwts.SIG.HS256)
+                .signWith(getKey())
                 .compact();
     }
 }

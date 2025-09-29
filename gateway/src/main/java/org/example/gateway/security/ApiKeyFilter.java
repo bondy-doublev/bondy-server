@@ -71,7 +71,6 @@ public class ApiKeyFilter implements GlobalFilter {
 
                     ServerHttpRequest mutated = request.mutate()
                             .headers(h -> {
-                                stripSensitiveHeaders(h);
                                 h.add("X-Auth-By", "gateway-apikey");
                             })
                             .build();
