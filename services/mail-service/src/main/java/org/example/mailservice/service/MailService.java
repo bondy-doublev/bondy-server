@@ -5,6 +5,7 @@ import jakarta.mail.internet.InternetAddress;
 import jakarta.mail.internet.MimeMessage;
 import jakarta.mail.internet.MimeUtility;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.example.commonweb.DTO.request.MailRequest;
 import org.example.commonweb.enums.ErrorCode;
 import org.example.commonweb.enums.MailPurpose;
@@ -24,6 +25,7 @@ import java.io.UnsupportedEncodingException;
 import java.nio.charset.StandardCharsets;
 import java.util.Locale;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class MailService implements IMailService {
@@ -69,7 +71,10 @@ public class MailService implements IMailService {
                 }
             }
 
-            mailSender.send(msg);
+            if (props.getEnvironment().equals("production"))
+                mailSender.send(msg);
+
+            log.info("Send email to {} success.", req.getTo());
         } catch (Exception ex) {
             throw new AppException(ErrorCode.MAIL_ERROR, ex.getMessage());
         }
