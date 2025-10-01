@@ -1,14 +1,19 @@
 package org.example.authservice.service;
 
+import org.example.authservice.dto.RefreshTokenDto;
+import org.example.authservice.dto.UserTokenDto;
 import org.example.authservice.client.MailClient;
+import org.example.authservice.config.security.ContextUser;
 import org.example.authservice.config.security.JwtService;
-import org.example.authservice.DTO.request.LoginRequest;
-import org.example.authservice.DTO.request.OAuth2Request;
-import org.example.authservice.DTO.request.RegisterRequest;
-import org.example.authservice.DTO.response.AuthResponse;
-import org.example.authservice.DTO.response.MessageResponse;
+import org.example.authservice.dto.request.ChangePasswordRequest;
+import org.example.authservice.dto.request.LoginRequest;
+import org.example.authservice.dto.request.OAuth2Request;
+import org.example.authservice.dto.request.RegisterRequest;
+import org.example.authservice.dto.response.AuthResponse;
+import org.example.authservice.dto.response.MessageResponse;
 import org.example.authservice.entity.*;
 import org.example.authservice.property.PropsConfig;
+import org.example.authservice.repository.AccountRepository;
 import org.example.authservice.repository.PreRegRepository;
 import org.example.authservice.repository.RefreshTokenRepository;
 import org.example.authservice.repository.UserRepository;
@@ -37,9 +42,10 @@ public class AuthService implements IAuthService {
     RefreshTokenRepository refreshTokenRepo;
     PreRegRepository preRegRepo;
     OtpService otpService;
+    AccountRepository accountRepo;
 
     PasswordEncoder passwordEncoder;
-    JwtService tokenSigner;
+    JwtService jwtService;
     MailClient mailClient;
 
     PropsConfig props;
@@ -79,7 +85,7 @@ public class AuthService implements IAuthService {
 
             sendWelcomeMail(newUser, rawPassword, oauthProvider);
 
-            return buildAuthResponse(newUser);
+            return buildAuthResponse(new UserTokenDto(user.getId(), user.getEmail(), user.getRole()));
         }
 
         if (user.getAvatarUrl() == null) {
@@ -111,13 +117,7 @@ public class AuthService implements IAuthService {
         }
 
         userRepo.save(user);
-        return buildAuthResponse(user);
-    }
-
-    private String generateDefaultPassword(String firstName) {
-        return props.getEnvironment().equals("production")
-                ? firstName + props.getUser().getDefaultPasswordSuffix()
-                : "11111111";
+        return buildAuthResponse(new UserTokenDto(user.getId(), user.getEmail(), user.getRole()));
     }
 
     @Override
@@ -138,7 +138,20 @@ public class AuthService implements IAuthService {
         if (!passwordEncoder.matches(request.getPassword(), localAccount.getPasswordHash()))
             throw new AppException(ErrorCode.UNAUTHORIZED, errorMessage);
 
-        return buildAuthResponse(user);
+        return buildAuthResponse(new UserTokenDto(user.getId(), user.getEmail(), user.getRole()));
+    }
+
+    @Override
+    public AuthResponse refreshToken(String rawToken) {
+        Long userId = ContextUser.get().getUserId();
+
+        String tokenHash = refreshTokenRepo.findValidByUserId(userId)
+                .orElseThrow(() -> new AppException(ErrorCode.UNAUTHORIZED, "Invalid refresh token"));
+
+        if (!passwordEncoder.matches(rawToken, tokenHash))
+            throw new AppException(ErrorCode.UNAUTHORIZED, "Invalid refresh token");
+
+        return buildAuthResponse(new UserTokenDto(userId, ContextUser.get().getEmail(), ContextUser.get().getRole()));
     }
 
     @Override
@@ -218,8 +231,38 @@ public class AuthService implements IAuthService {
         preRegRepo.delete(preReg);
     }
 
-    private AuthResponse buildAuthResponse(User user) {
-        var accessToken = tokenSigner.generateAccessToken(user);
+    @Override
+    public void changePassword(Long userId, ChangePasswordRequest request) {
+        if (!request.getNewPassword().equals(request.getConfirmPassword()))
+            throw new AppException(ErrorCode.VALIDATION_ERROR, "Confirm password does not match new password");
+
+        User user = userRepo.findById(userId)
+                .orElseThrow(() -> new AppException(ErrorCode.ENTITY_NOT_FOUND, "User not found"));
+
+        Account account = user.getAccounts()
+                .stream()
+                .filter(acc -> Provider.LOCAL.name().equals(acc.getProvider()))
+                .findFirst()
+                .orElseThrow(() -> new AppException(ErrorCode.ENTITY_NOT_FOUND, "User not found"));
+
+        if (!passwordEncoder.matches(request.getOldPassword(), account.getPasswordHash()))
+            throw new AppException(ErrorCode.BAD_REQUEST, "Old password incorrect");
+
+        String passwordHash = passwordEncoder.encode(request.getNewPassword());
+
+        account.setPasswordHash(passwordHash);
+
+        accountRepo.save(account);
+    }
+
+    private String generateDefaultPassword(String firstName) {
+        return props.getEnvironment().equals("production")
+                ? firstName + props.getUser().getDefaultPasswordSuffix()
+                : "11111111";
+    }
+
+    private AuthResponse buildAuthResponse(UserTokenDto user) {
+        var accessToken = jwtService.generateAccessToken(user);
         var refreshToken = generateRefreshToken(user);
 
         return AuthResponse.builder()
@@ -228,16 +271,22 @@ public class AuthService implements IAuthService {
                 .build();
     }
 
-    private RefreshToken generateRefreshToken(User user) {
-        RefreshToken token = RefreshToken.builder()
-                .token(UUID.randomUUID().toString())
+    private RefreshTokenDto generateRefreshToken(UserTokenDto userDto) {
+        var token = UUID.randomUUID().toString();
+        var tokenHash = passwordEncoder.encode(token);
+
+        User user = new User();
+        user.setId(userDto.getUserId());
+
+        RefreshToken newToken = RefreshToken.builder()
+                .tokenHash(tokenHash)
                 .user(user)
                 .expiresAt(LocalDateTime.now().plusDays(7))
                 .build();
 
         refreshTokenRepo.revokeTokens(user.getId(), LocalDateTime.now());
-        refreshTokenRepo.save(token);
-        return token;
+        refreshTokenRepo.save(newToken);
+        return new RefreshTokenDto(token, newToken.getExpiresAt());
     }
 
     private void sendRegistrationWelcomeMail(User user) {

@@ -23,7 +23,8 @@ public class RefreshToken extends BaseEntity {
     @EqualsAndHashCode.Exclude
     User user;
 
-    String token;
+    @Column(name = "token_hash")
+    String tokenHash;
 
     Boolean revoked = false;
 

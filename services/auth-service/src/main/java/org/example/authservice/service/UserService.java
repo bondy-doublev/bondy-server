@@ -5,7 +5,8 @@ import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import org.example.authservice.client.UploadClient;
-import org.example.authservice.config.security.JwtService;
+import org.example.authservice.dto.UpdateUserDto;
+import org.example.authservice.entity.User;
 import org.example.authservice.repository.UserRepository;
 import org.example.authservice.service.interfaces.IUserService;
 import org.example.commonweb.enums.ErrorCode;
@@ -18,8 +19,13 @@ import org.springframework.web.multipart.MultipartFile;
 @RequiredArgsConstructor
 public class UserService implements IUserService {
     UserRepository userRepository;
-    JwtService jwtService;
     UploadClient uploadClient;
+
+    @Override
+    public User getProfile(Long userId) {
+        return userRepository.findById(userId)
+                .orElseThrow(() -> new AppException(ErrorCode.ENTITY_NOT_FOUND, "Profile not found"));
+    }
 
     @Override
     @Transactional
@@ -44,5 +50,27 @@ public class UserService implements IUserService {
         } catch (Exception e) {
             throw new AppException(ErrorCode.IO_ERROR, e.getMessage());
         }
+    }
+
+    @Override
+    public User updateProfile(Long userId, UpdateUserDto dto) {
+        if (dto.getFirstName() == null
+                && dto.getMiddleName() == null
+                && dto.getLastName() == null
+                && dto.getDob() == null
+                && dto.getGender() == null) {
+            throw new AppException(ErrorCode.VALIDATION_ERROR, "No data provided for update");
+        }
+
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new AppException(ErrorCode.ENTITY_NOT_FOUND, "User not found"));
+
+        if (dto.getFirstName() != null) user.setFirstName(dto.getFirstName());
+        if (dto.getMiddleName() != null) user.setMiddleName(dto.getMiddleName());
+        if (dto.getLastName() != null) user.setLastName(dto.getLastName());
+        if (dto.getDob() != null) user.setDob(dto.getDob());
+        if (dto.getGender() != null) user.setGender(dto.getGender());
+
+        return userRepository.save(user);
     }
 }

@@ -43,7 +43,7 @@ CREATE TABLE accounts (
 CREATE TABLE refresh_tokens (
     id BIGSERIAL PRIMARY KEY,
     user_id BIGINT NOT NULL,
-    token TEXT NOT NULL,
+    token_hash TEXT NOT NULL,
     revoked BOOLEAN NOT NULL DEFAULT FALSE,
     revoked_at TIMESTAMP NULL,
     expires_at TIMESTAMP NOT NULL,
