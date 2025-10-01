@@ -2,7 +2,7 @@ package org.example.authservice.dto;
 
 import lombok.*;
 import lombok.experimental.FieldDefaults;
-import org.example.commonweb.validation.nullornotblank.NullOrNotBlank;
+import org.example.commonweb.validator.nullornotblank.NullOrNotBlank;
 
 import java.time.LocalDateTime;
 

@@ -1,4 +1,4 @@
-package org.example.commonweb.validation.nullornotblank;
+package org.example.commonweb.validator.nullornotblank;
 
 import jakarta.validation.ConstraintValidator;
 import jakarta.validation.ConstraintValidatorContext;

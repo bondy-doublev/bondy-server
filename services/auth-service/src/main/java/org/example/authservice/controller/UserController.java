@@ -33,8 +33,7 @@ public class UserController {
     }
 
     @PutMapping(value = "/avatar", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    ApiResponse uploadAvatar(@RequestParam("file") MultipartFile file)
-    {
+    ApiResponse uploadAvatar(@RequestParam("file") MultipartFile file) {
         String avatarUrl = userService.uploadAvatar(file, ContextUser.get().getUserId());
 
         return new ApiResponse(Map.of("avatarUrl", avatarUrl));

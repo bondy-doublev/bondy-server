@@ -5,6 +5,7 @@ import org.example.authservice.dto.UserTokenDto;
 import org.example.authservice.client.MailClient;
 import org.example.authservice.config.security.ContextUser;
 import org.example.authservice.config.security.JwtService;
+import org.example.authservice.dto.request.ChangePasswordRequest;
 import org.example.authservice.dto.request.LoginRequest;
 import org.example.authservice.dto.request.OAuth2Request;
 import org.example.authservice.dto.request.RegisterRequest;
@@ -12,6 +13,7 @@ import org.example.authservice.dto.response.AuthResponse;
 import org.example.authservice.dto.response.MessageResponse;
 import org.example.authservice.entity.*;
 import org.example.authservice.property.PropsConfig;
+import org.example.authservice.repository.AccountRepository;
 import org.example.authservice.repository.PreRegRepository;
 import org.example.authservice.repository.RefreshTokenRepository;
 import org.example.authservice.repository.UserRepository;
@@ -40,6 +42,7 @@ public class AuthService implements IAuthService {
     RefreshTokenRepository refreshTokenRepo;
     PreRegRepository preRegRepo;
     OtpService otpService;
+    AccountRepository accountRepo;
 
     PasswordEncoder passwordEncoder;
     JwtService jwtService;
@@ -226,6 +229,30 @@ public class AuthService implements IAuthService {
         sendRegistrationWelcomeMail(newUser);
 
         preRegRepo.delete(preReg);
+    }
+
+    @Override
+    public void changePassword(Long userId, ChangePasswordRequest request) {
+        if (!request.getNewPassword().equals(request.getConfirmPassword()))
+            throw new AppException(ErrorCode.VALIDATION_ERROR, "Confirm password does not match new password");
+
+        User user = userRepo.findById(userId)
+                .orElseThrow(() -> new AppException(ErrorCode.ENTITY_NOT_FOUND, "User not found"));
+
+        Account account = user.getAccounts()
+                .stream()
+                .filter(acc -> Provider.LOCAL.name().equals(acc.getProvider()))
+                .findFirst()
+                .orElseThrow(() -> new AppException(ErrorCode.ENTITY_NOT_FOUND, "User not found"));
+
+        if (!passwordEncoder.matches(request.getOldPassword(), account.getPasswordHash()))
+            throw new AppException(ErrorCode.BAD_REQUEST, "Old password incorrect");
+
+        String passwordHash = passwordEncoder.encode(request.getNewPassword());
+
+        account.setPasswordHash(passwordHash);
+
+        accountRepo.save(account);
     }
 
     private String generateDefaultPassword(String firstName) {

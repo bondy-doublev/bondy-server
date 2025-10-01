@@ -7,10 +7,8 @@ import jakarta.validation.Valid;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
-import org.example.authservice.dto.request.LoginRequest;
-import org.example.authservice.dto.request.OAuth2Request;
-import org.example.authservice.dto.request.OtpVerifyRequest;
-import org.example.authservice.dto.request.RegisterRequest;
+import org.example.authservice.config.security.ContextUser;
+import org.example.authservice.dto.request.*;
 import org.example.authservice.dto.response.AuthResponse;
 import org.example.authservice.dto.response.MessageResponse;
 import org.example.authservice.dto.RefreshTokenDto;
@@ -89,5 +87,12 @@ public class AuthController {
     ApiResponse registerVerify(@RequestBody @Valid OtpVerifyRequest request) {
         authService.registerVerify(request.getEmail(), request.getOtpCode());
         return new ApiResponse();
+    }
+
+    @PostMapping("/change-password")
+    ApiResponse changePassword(@RequestBody @Valid ChangePasswordRequest request) {
+        authService.changePassword(ContextUser.get().getUserId(), request);
+
+        return new ApiResponse(new MessageResponse("Change password successfully."));
     }
 }
