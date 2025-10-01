@@ -11,6 +11,8 @@ import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
 
+import java.sql.SQLException;
+
 @ControllerAdvice
 public class GlobalExceptionHandler {
     @ExceptionHandler(value = AppException.class)
@@ -61,6 +63,22 @@ public class GlobalExceptionHandler {
             errorCode = ErrorCode.INTERNAL_ERROR;
             message = ex.getMessage();
         }
+
+        ApiResponse response = ApiResponse.builder()
+                .code(errorCode.getCode())
+                .data(ErrorResponse.builder()
+                        .type(errorCode.name())
+                        .message(message)
+                        .build())
+                .build();
+
+        return ResponseEntity.status(errorCode.getCode()).body(response);
+    }
+
+    @ExceptionHandler(SQLException.class)
+    ResponseEntity<ApiResponse> handlingSQL(SQLException ex) {
+        ErrorCode errorCode = ErrorCode.INTERNAL_ERROR;
+        String message = ex.getMessage();
 
         ApiResponse response = ApiResponse.builder()
                 .code(errorCode.getCode())
