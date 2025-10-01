@@ -1,5 +1,6 @@
 package org.example.authservice.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
@@ -36,11 +37,16 @@ public class User extends BaseEntityWithUpdate {
 
     LocalDateTime dob;
     Boolean gender;
+
+    @JsonIgnore
     String role;
+
+    @JsonIgnore
     Boolean active;
 
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     @ToString.Exclude
+    @JsonIgnore
     private Set<Account> accounts = new HashSet<>();
 
     public void addAccount(Account account) {

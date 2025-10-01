@@ -1,5 +1,6 @@
 package org.example.authservice.repository;
 
+import org.example.authservice.dto.UpdateUserDto;
 import org.example.authservice.entity.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;

@@ -54,13 +54,7 @@ public class GlobalExceptionHandler {
         ErrorCode errorCode;
         String message;
 
-        if (ex.getStatusCode().value() == 401) {
-            errorCode = ErrorCode.UNAUTHORIZED;
-            message = "Unauthorized when calling external service";
-        } else if (ex.getStatusCode().is4xxClientError()) {
-            errorCode = ErrorCode.BAD_REQUEST;
-            message = "Client error when calling external service";
-        } else if (ex.getStatusCode().is5xxServerError()) {
+        if (ex.getStatusCode().is5xxServerError()) {
             errorCode = ErrorCode.INTERNAL_ERROR;
             message = "Server error from external service";
         } else {
