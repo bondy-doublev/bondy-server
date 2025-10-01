@@ -4,7 +4,7 @@ import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 import lombok.AccessLevel;
 import lombok.experimental.FieldDefaults;
-import org.example.authservice.entity.User;
+import org.example.authservice.dto.UserTokenDto;
 import org.example.authservice.property.PropsConfig;
 import org.springframework.stereotype.Component;
 
@@ -31,14 +31,14 @@ public class JwtService {
         return Keys.hmacShaKeyFor(keyBytes);
     }
 
-    public String generateAccessToken(User user) {
+    public String generateAccessToken(UserTokenDto user) {
         Instant now = Instant.now();
 
         return Jwts.builder()
                 .claims()
                 .add("role", user.getRole())
                 .add("email", user.getEmail())
-                .subject(String.valueOf(user.getId()))
+                .subject(String.valueOf(user.getUserId()))
                 .issuer(issuer)
                 .issuedAt(Date.from(now))
                 .expiration(Date.from(now.plusSeconds(accessTtlSec)))

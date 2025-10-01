@@ -39,7 +39,7 @@ public class JwtFilter implements GlobalFilter {
             return chain.filter(exchange);
         }
 
-        if (isPublic(path)) {
+        if (isPublic(path) && !path.equals("/api/v1/auth/refresh")) {
             return chain.filter(
                     exchange.mutate()
                             .request(r -> r.headers(this::stripSensitiveHeaders))

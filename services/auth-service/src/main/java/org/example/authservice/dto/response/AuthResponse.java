@@ -1,9 +1,9 @@
-package org.example.authservice.DTO.response;
+package org.example.authservice.dto.response;
 
-import org.example.authservice.entity.RefreshToken;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
+import org.example.authservice.dto.RefreshTokenDto;
 
 @Data
 @NoArgsConstructor
@@ -14,5 +14,5 @@ public class AuthResponse {
     String accessToken;
 
     @JsonIgnore
-    RefreshToken refreshToken;
+    RefreshTokenDto refreshToken;
 }

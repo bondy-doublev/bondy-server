@@ -1,25 +1,23 @@
 package org.example.authservice.controller;
 
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
-import org.example.authservice.DTO.request.LoginRequest;
-import org.example.authservice.DTO.request.OAuth2Request;
-import org.example.authservice.DTO.request.OtpVerifyRequest;
-import org.example.authservice.DTO.request.RegisterRequest;
-import org.example.authservice.DTO.response.AuthResponse;
-import org.example.authservice.DTO.response.MessageResponse;
-import org.example.authservice.entity.RefreshToken;
+import org.example.authservice.dto.request.LoginRequest;
+import org.example.authservice.dto.request.OAuth2Request;
+import org.example.authservice.dto.request.OtpVerifyRequest;
+import org.example.authservice.dto.request.RegisterRequest;
+import org.example.authservice.dto.response.AuthResponse;
+import org.example.authservice.dto.response.MessageResponse;
+import org.example.authservice.dto.RefreshTokenDto;
 import org.example.authservice.service.interfaces.IAuthService;
 import org.example.authservice.util.CookieUtil;
 import org.example.commonweb.DTO.core.ApiResponse;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.time.ZoneId;
 
@@ -33,28 +31,50 @@ public class AuthController {
 
     @PostMapping("/login")
     ApiResponse login(@RequestBody @Valid LoginRequest request,
-                      HttpServletResponse response) {
+                      HttpServletResponse response)
+    {
         AuthResponse authResponse = authService.login(request);
 
-        RefreshToken token = authResponse.getRefreshToken();
+        RefreshTokenDto token = authResponse.getRefreshToken();
 
-        CookieUtil.addRefreshCookie(response,
+        CookieUtil.addRefreshCookie(
+                response,
                 token.getToken(),
-                token.getExpiresAt().atZone(ZoneId.systemDefault()).toInstant());
+                token.getExpiresAt().atZone(ZoneId.systemDefault()).toInstant()
+        );
 
         return new ApiResponse(authResponse);
     }
 
     @PostMapping("/oauth2")
     ApiResponse oauth2(@RequestBody @Valid OAuth2Request request,
-                           HttpServletResponse response) {
+                           HttpServletResponse response)
+    {
         AuthResponse authResponse = authService.oauth2(request);
 
-        RefreshToken token = authResponse.getRefreshToken();
+        RefreshTokenDto token = authResponse.getRefreshToken();
 
-        CookieUtil.addRefreshCookie(response,
+        CookieUtil.addRefreshCookie(
+                response,
                 token.getToken(),
-                token.getExpiresAt().atZone(ZoneId.systemDefault()).toInstant());
+                token.getExpiresAt().atZone(ZoneId.systemDefault()).toInstant()
+        );
+
+        return new ApiResponse(authResponse);
+    }
+
+    @PostMapping("/refresh")
+    ApiResponse refreshToken(@Parameter(hidden = true) @CookieValue(value = "refreshToken") String refreshToken,
+                             HttpServletResponse response)
+    {
+        AuthResponse authResponse = authService.refreshToken(refreshToken);
+        RefreshTokenDto token = authResponse.getRefreshToken();
+
+        CookieUtil.addRefreshCookie(
+                response,
+                token.getToken(),
+                token.getExpiresAt().atZone(ZoneId.systemDefault()).toInstant()
+        );
 
         return new ApiResponse(authResponse);
     }
