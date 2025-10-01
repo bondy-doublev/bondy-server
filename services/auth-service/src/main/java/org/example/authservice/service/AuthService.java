@@ -5,10 +5,7 @@ import org.example.authservice.dto.UserTokenDto;
 import org.example.authservice.client.MailClient;
 import org.example.authservice.config.security.ContextUser;
 import org.example.authservice.config.security.JwtService;
-import org.example.authservice.dto.request.ChangePasswordRequest;
-import org.example.authservice.dto.request.LoginRequest;
-import org.example.authservice.dto.request.OAuth2Request;
-import org.example.authservice.dto.request.RegisterRequest;
+import org.example.authservice.dto.request.*;
 import org.example.authservice.dto.response.AuthResponse;
 import org.example.authservice.dto.response.MessageResponse;
 import org.example.authservice.entity.*;
@@ -85,7 +82,7 @@ public class AuthService implements IAuthService {
 
             sendWelcomeMail(newUser, rawPassword, oauthProvider);
 
-            return buildAuthResponse(new UserTokenDto(user.getId(), user.getEmail(), user.getRole()));
+            return buildAuthResponse(new UserTokenDto(newUser.getId(), newUser.getEmail(), newUser.getRole()));
         }
 
         if (user.getAvatarUrl() == null) {
@@ -128,7 +125,7 @@ public class AuthService implements IAuthService {
                 .orElseThrow(() -> new AppException(ErrorCode.UNAUTHORIZED, errorMessage));
 
         if (!user.getActive())
-            throw new AppException(ErrorCode.UNAUTHORIZED, "Your account is inactive.");
+            throw new AppException(ErrorCode.UNAUTHORIZED, "Your account is inactive");
 
         Account localAccount = user.getAccounts().stream()
                 .filter(acc -> Provider.LOCAL.name().equals(acc.getProvider()))
@@ -161,7 +158,7 @@ public class AuthService implements IAuthService {
                 .orElse(null);
 
         if (user != null)
-            throw new AppException(ErrorCode.DUPLICATE_RESOURCE, "This email has already been registered.");
+            throw new AppException(ErrorCode.DUPLICATE_RESOURCE, "This email has already been registered");
 
         PreRegistration preReg = preRegRepo.findByEmail(request.getEmail()).orElse(null);
 
@@ -178,7 +175,7 @@ public class AuthService implements IAuthService {
             preRegRepo.save(preReg);
         }
 
-        IOtpService.OtpResult otp = otpService.generateOtpCode("pre_registration", preReg.getId(), Action.REGISTER.name());
+        IOtpService.OtpResult otp = otpService.generateOtpCode("pre_registration", preReg.getId(), Action.REGISTER);
 
         MailRequest mail = MailRequest.builder()
                 .to(preReg.getEmail())
@@ -201,9 +198,9 @@ public class AuthService implements IAuthService {
     public void registerVerify(String email, String rawCode) {
         PreRegistration preReg = preRegRepo.findByEmail(email)
                 .orElseThrow(() -> new AppException(ErrorCode.BAD_REQUEST,
-                        "Verification information is incorrect. Please restart the registration process."));
+                        "Verification information is incorrect. Please restart the registration process"));
 
-        otpService.validateOtp(rawCode, preReg.getId(), Action.REGISTER.name());
+        otpService.validateOtp(rawCode, preReg.getId(), Action.REGISTER);
 
         User newUser = User.builder()
                 .email(email)
@@ -237,13 +234,13 @@ public class AuthService implements IAuthService {
             throw new AppException(ErrorCode.VALIDATION_ERROR, "Confirm password does not match new password");
 
         User user = userRepo.findById(userId)
-                .orElseThrow(() -> new AppException(ErrorCode.ENTITY_NOT_FOUND, "User not found"));
+                .orElseThrow(() -> new AppException(ErrorCode.BAD_REQUEST, "User not found"));
 
         Account account = user.getAccounts()
                 .stream()
                 .filter(acc -> Provider.LOCAL.name().equals(acc.getProvider()))
                 .findFirst()
-                .orElseThrow(() -> new AppException(ErrorCode.ENTITY_NOT_FOUND, "User not found"));
+                .orElseThrow(() -> new AppException(ErrorCode.BAD_REQUEST, "Account not exist"));
 
         if (!passwordEncoder.matches(request.getOldPassword(), account.getPasswordHash()))
             throw new AppException(ErrorCode.BAD_REQUEST, "Old password incorrect");
@@ -253,6 +250,53 @@ public class AuthService implements IAuthService {
         account.setPasswordHash(passwordHash);
 
         accountRepo.save(account);
+    }
+
+    @Override
+    public MessageResponse sendResetPasswordOtp(String email) {
+        User user = userRepo.findByEmail(email)
+                .orElseThrow(() -> new AppException(ErrorCode.BAD_REQUEST, "User not found"));
+
+        IOtpService.OtpResult otp = otpService.generateOtpCode("user", user.getId(), Action.RESET_PASSWORD);
+
+        MailRequest mail = MailRequest.builder()
+                .to(email)
+                .template(MailPurpose.RESET_PASSWORD_OTP.template)
+                .locale(Locale.getDefault())
+                .model(Map.of(
+                        "firstName", user.getFirstName(),
+                        "otp", otp.raw(),
+                        "expiresMinutes", props.getOtp().getTtlMinutes()
+                ))
+                .build();
+
+        mailClient.send(mail);
+
+        return new MessageResponse("OTP Code sent to your email");
+    }
+
+    @Override
+    public MessageResponse resetPassword(ResetPasswordRequest request) {
+        User user = userRepo.findByEmail(request.getEmail())
+                .orElseThrow(() -> new AppException(ErrorCode.BAD_REQUEST, "User not found"));
+
+        if (!request.getNewPassword().equals(request.getConfirmPassword()))
+            throw new AppException(ErrorCode.VALIDATION_ERROR, "Confirm password does not match new password");
+
+        otpService.validateOtp(request.getOtpCode(), user.getId(), Action.RESET_PASSWORD);
+
+        Account account = user.getAccounts()
+                .stream()
+                .filter(acc -> Provider.LOCAL.name().equals(acc.getProvider()))
+                .findFirst()
+                .orElseThrow(() -> new AppException(ErrorCode.BAD_REQUEST, "Account not exist"));
+
+        String passwordHash = passwordEncoder.encode(request.getNewPassword());
+
+        account.setPasswordHash(passwordHash);
+        accountRepo.save(account);
+
+        return new MessageResponse("Reset password successfully");
     }
 
     private String generateDefaultPassword(String firstName) {

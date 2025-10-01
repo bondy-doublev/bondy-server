@@ -8,6 +8,7 @@ import jakarta.transaction.Transactional;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
+import org.example.commonweb.enums.Action;
 import org.example.commonweb.enums.ErrorCode;
 import org.example.commonweb.exception.AppException;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -25,7 +26,9 @@ public class OtpService implements IOtpService {
     PropsConfig props;
 
     @Override
-    public OtpResult generateOtpCode(String subjectType, Long subjectId, String purpose) {
+    public OtpResult generateOtpCode(String subjectType, Long subjectId, Action purpose) {
+        otpRepo.deactivateActiveOtp(subjectId, purpose.name());
+
         String rawCode = String.format("%06d", (int) (Math.random() * 1_000_000));
 
         if (!props.getEnvironment().equals("production"))
@@ -33,25 +36,25 @@ public class OtpService implements IOtpService {
 
         String codeHash = passwordEncoder.encode(rawCode);
 
-        OtpCode entity = OtpCode.builder()
+        OtpCode otp = OtpCode.builder()
                 .subjectType(subjectType)
                 .subjectId(subjectId)
-                .purpose(purpose)
+                .purpose(purpose.name())
                 .codeHash(codeHash)
                 .attempts(0)
                 .active(true)
                 .expiresAt(LocalDateTime.now().plusMinutes(props.getOtp().getTtlMinutes()))
                 .build();
 
-        otpRepo.save(entity);
+        otpRepo.save(otp);
 
-        return new OtpResult(rawCode, entity);
+        return new OtpResult(rawCode, otp);
     }
 
     @Transactional
     @Override
-    public void validateOtp(String raw, Long subjectId, String purpose) {
-        OtpCode otp = otpRepo.findBySubjectIdAndPurpose(subjectId, purpose).orElse(null);
+    public void validateOtp(String raw, Long subjectId, Action purpose) {
+        OtpCode otp = otpRepo.findBySubjectIdAndPurpose(subjectId, purpose.name()).orElse(null);
         if (otp == null) {
             throw new AppException(ErrorCode.ENTITY_NOT_FOUND,
                     "OTP does not exist for this request.");
