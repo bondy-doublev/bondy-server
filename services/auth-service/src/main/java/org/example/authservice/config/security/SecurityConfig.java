@@ -7,19 +7,6 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 
 @Configuration
 public class SecurityConfig {
-//    private final ContextUserFilter contextUserFilter;
-//
-//    public SecurityConfig(ContextUserFilter contextUserFilter) {
-//        this.contextUserFilter = contextUserFilter;
-//    }
-//
-//    @Bean
-//    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-//        http
-//                .addFilterAfter(contextUserFilter, UsernamePasswordAuthenticationFilter.class);
-//        return http.build();
-//    }
-
     @Bean
     PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
