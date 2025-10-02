@@ -1,5 +1,5 @@
 -- FRIENDSHIP
-CREATE TABLE friendship (
+CREATE TABLE friendships (
     id BIGSERIAL PRIMARY KEY,
     user_id BIGINT NOT NULL,
     friend_id BIGINT NOT NULL,
@@ -13,13 +13,13 @@ CREATE TABLE friendship (
 );
 
 -- Chặn trùng cặp đảo ngược (A,B) vs (B,A)
-CREATE UNIQUE INDEX uq_friendship_pair ON friendship (
+CREATE UNIQUE INDEX uq_friendship_pair ON friendships (
               LEAST(user_id, friend_id),
               GREATEST(user_id, friend_id)
 );
 
 -- FOLLOW
-CREATE TABLE follow (
+CREATE TABLE follows (
     id BIGSERIAL PRIMARY KEY,
     follower_id BIGINT NOT NULL,
     followee_id BIGINT NOT NULL,
@@ -32,7 +32,7 @@ CREATE TABLE follow (
 CREATE TABLE posts (
     id BIGSERIAL PRIMARY KEY,
     user_id BIGINT NOT NULL,
-    content_text TEXT NOT NULL,
+    content_text TEXT NULL,
     media_count SMALLINT NOT NULL DEFAULT 0,
     visibility BOOLEAN NOT NULL DEFAULT TRUE,
     created_at TIMESTAMP NOT NULL DEFAULT now(),
@@ -45,11 +45,10 @@ CREATE TABLE media_attachments (
     post_id BIGINT NOT NULL,
     type TEXT NOT NULL,
     url TEXT NOT NULL,
-    metadata TEXT NULL,
     created_at TIMESTAMP NOT NULL DEFAULT now(),
     CONSTRAINT fk_media_posts
     FOREIGN KEY (post_id) REFERENCES posts(id) ON DELETE CASCADE,
-    CONSTRAINT ck_media_type CHECK (type IN ('IMAGE','VIDEO'))
+    CONSTRAINT ck_media_type CHECK (type IN ('IMAGE','VIDEO','OTHER'))
 );
 
 -- REACTIONS (like)
@@ -88,11 +87,27 @@ CREATE TABLE comments (
     FOREIGN KEY (parent_id) REFERENCES comments(id) ON DELETE CASCADE
 );
 
-CREATE INDEX idx_friendship_user   ON friendship(user_id);
-CREATE INDEX idx_friendship_friend ON friendship(friend_id);
+CREATE TABLE mentions (
+    id BIGSERIAL PRIMARY KEY,
+    post_id BIGINT NULL,
+    comment_id BIGINT NULL,
+    user_id BIGINT NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT now(),
 
-CREATE INDEX idx_follow_follower ON follow(follower_id);
-CREATE INDEX idx_follow_followee ON follow(followee_id);
+    CONSTRAINT fk_mentions_post FOREIGN KEY (post_id) REFERENCES posts(id) ON DELETE CASCADE,
+    CONSTRAINT fk_mentions_comment FOREIGN KEY (comment_id) REFERENCES comments(id) ON DELETE CASCADE,
+
+    CONSTRAINT ck_mentions_scope CHECK (
+        (post_id IS NOT NULL AND comment_id IS NULL)
+        OR (post_id IS NULL AND comment_id IS NOT NULL)
+    )
+);
+
+CREATE INDEX idx_friendship_user   ON friendships(user_id);
+CREATE INDEX idx_friendship_friend ON friendships(friend_id);
+
+CREATE INDEX idx_follow_follower ON follows(follower_id);
+CREATE INDEX idx_follow_followee ON follows(followee_id);
 
 CREATE INDEX idx_posts_user ON posts(user_id);
 
@@ -104,3 +119,7 @@ CREATE INDEX idx_shares_post ON shares(post_id);
 
 CREATE INDEX idx_comments_post   ON comments(post_id);
 CREATE INDEX idx_comments_parent ON comments(parent_id);
+
+CREATE INDEX idx_mentions_post ON mentions(post_id);
+CREATE INDEX idx_mentions_comment ON mentions(comment_id);
+CREATE INDEX idx_mentions_user ON mentions(user_id);

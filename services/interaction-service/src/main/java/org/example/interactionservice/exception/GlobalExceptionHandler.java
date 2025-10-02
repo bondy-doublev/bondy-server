@@ -6,6 +6,7 @@ import org.example.commonweb.enums.ErrorCode;
 import org.example.commonweb.exception.AppException;
 import org.springframework.context.support.DefaultMessageSourceResolvable;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.HttpMediaTypeException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -53,26 +54,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(WebClientResponseException.class)
     ResponseEntity<ApiResponse> handlingWebClient(WebClientResponseException ex) {
-        ErrorCode errorCode;
-        String message;
-
-        if (ex.getStatusCode().is5xxServerError()) {
-            errorCode = ErrorCode.INTERNAL_ERROR;
-            message = "Server error from external service";
-        } else {
-            errorCode = ErrorCode.INTERNAL_ERROR;
-            message = ex.getMessage();
-        }
-
-        ApiResponse response = ApiResponse.builder()
-                .code(errorCode.getCode())
-                .data(ErrorResponse.builder()
-                        .type(errorCode.name())
-                        .message(message)
-                        .build())
-                .build();
-
-        return ResponseEntity.status(errorCode.getCode()).body(response);
+        return ResponseEntity.status(ex.getStatusCode()).body(ex.getResponseBodyAs(ApiResponse.class));
     }
 
     @ExceptionHandler(SQLException.class)
@@ -90,4 +72,22 @@ public class GlobalExceptionHandler {
 
         return ResponseEntity.status(errorCode.getCode()).body(response);
     }
+
+    @ExceptionHandler(HttpMediaTypeException.class)
+    ResponseEntity<ApiResponse> handlingHttpMediaTypeException(HttpMediaTypeException ex) {
+        ErrorCode errorCode = ErrorCode.UNSUPPORTED_MEDIA_TYPE;
+
+        String message = ex.getMessage() != null ? ex.getMessage() : "Unsupported media type";
+
+        ApiResponse response = ApiResponse.builder()
+                .code(errorCode.getCode())
+                .data(ErrorResponse.builder()
+                        .type(errorCode.name())
+                        .message(message)
+                        .build())
+                .build();
+
+        return ResponseEntity.status(errorCode.getCode()).body(response);
+    }
+
 }

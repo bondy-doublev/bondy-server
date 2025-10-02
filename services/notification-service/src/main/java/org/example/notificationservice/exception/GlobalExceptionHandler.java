@@ -1,4 +1,4 @@
-package org.example.authservice.exception;
+package org.example.notificationservice.exception;
 
 import org.example.commonweb.DTO.core.ApiResponse;
 import org.example.commonweb.DTO.core.ErrorResponse;
@@ -6,10 +6,10 @@ import org.example.commonweb.enums.ErrorCode;
 import org.example.commonweb.exception.AppException;
 import org.springframework.context.support.DefaultMessageSourceResolvable;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.HttpMediaTypeException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
-import org.springframework.web.reactive.function.client.WebClientResponseException;
 
 import java.sql.SQLException;
 
@@ -51,11 +51,6 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(errorCode.getCode()).body(response);
     }
 
-    @ExceptionHandler(WebClientResponseException.class)
-    ResponseEntity<ApiResponse> handlingWebClient(WebClientResponseException ex) {
-        return ResponseEntity.status(ex.getStatusCode()).body(ex.getResponseBodyAs(ApiResponse.class));
-    }
-
     @ExceptionHandler(SQLException.class)
     ResponseEntity<ApiResponse> handlingSQL(SQLException ex) {
         ErrorCode errorCode = ErrorCode.INTERNAL_ERROR;
@@ -71,4 +66,22 @@ public class GlobalExceptionHandler {
 
         return ResponseEntity.status(errorCode.getCode()).body(response);
     }
+
+    @ExceptionHandler(HttpMediaTypeException.class)
+    ResponseEntity<ApiResponse> handlingHttpMediaTypeException(HttpMediaTypeException ex) {
+        ErrorCode errorCode = ErrorCode.UNSUPPORTED_MEDIA_TYPE;
+
+        String message = ex.getMessage() != null ? ex.getMessage() : "Unsupported media type";
+
+        ApiResponse response = ApiResponse.builder()
+                .code(errorCode.getCode())
+                .data(ErrorResponse.builder()
+                        .type(errorCode.name())
+                        .message(message)
+                        .build())
+                .build();
+
+        return ResponseEntity.status(errorCode.getCode()).body(response);
+    }
+
 }

@@ -112,6 +112,7 @@
     <module>services/mail-service</module>
     <module>services/upload-service</module>
     <module>services/notification-service</module>
+    <module>services/interaction-service</module>
   </modules>
 
   <!-- Quản lý plugin chung, con tự “kích hoạt” khi cần -->

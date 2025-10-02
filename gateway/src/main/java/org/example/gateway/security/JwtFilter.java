@@ -24,10 +24,12 @@ public class JwtFilter implements GlobalFilter {
     private final JwtService jwtService;
     private final AntPathMatcher matcher = new AntPathMatcher();
     private final List<String> publicPaths;
+    private final List<String> internalPaths;
 
     public JwtFilter(JwtService jwtService, PropsConfig props) {
         this.jwtService = jwtService;
         this.publicPaths = Objects.requireNonNullElse(props.getJwt().getPublicPaths(), List.of());
+        internalPaths = props.getInternalPaths();
     }
 
     @Override
@@ -39,7 +41,7 @@ public class JwtFilter implements GlobalFilter {
             return chain.filter(exchange);
         }
 
-        if (isPublic(path) && !path.equals("/api/v1/auth/refresh")) {
+        if (isPublic(path) && !path.equals("/api/v1/auth/refresh") || isInternal(path)) {
             return chain.filter(
                     exchange.mutate()
                             .request(r -> r.headers(this::stripSensitiveHeaders))
@@ -80,6 +82,10 @@ public class JwtFilter implements GlobalFilter {
 
     private boolean isPublic(String path) {
         return publicPaths.stream().anyMatch(p -> matcher.match(p, path));
+    }
+
+    private boolean isInternal(String path) {
+        return internalPaths.stream().anyMatch(p -> matcher.match(p, path));
     }
 
     private void stripSensitiveHeaders(HttpHeaders h) {
