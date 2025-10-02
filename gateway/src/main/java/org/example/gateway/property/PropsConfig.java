@@ -8,8 +8,17 @@ import java.util.List;
 @ConfigurationProperties(prefix = "gateway")
 @Component
 public class PropsConfig {
+    private List<String> internalPaths;
     private final Jwt jwt = new Jwt();
     private final ApiKey apiKey = new ApiKey();
+
+    public List<String> getInternalPaths() {
+        return internalPaths;
+    }
+
+    public void setInternalPaths(List<String> internalPaths) {
+        this.internalPaths = internalPaths;
+    }
 
     public Jwt getJwt() {
         return jwt;

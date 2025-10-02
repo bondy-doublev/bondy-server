@@ -12,25 +12,6 @@ import org.springframework.web.reactive.function.client.WebClientResponseExcepti
 public class GlobalExceptionHandler {
     @ExceptionHandler(WebClientResponseException.class)
     ResponseEntity<ApiResponse> handlingWebClient(WebClientResponseException ex) {
-        ErrorCode errorCode;
-        String message;
-
-        if (ex.getStatusCode().is5xxServerError()) {
-            errorCode = ErrorCode.INTERNAL_ERROR;
-            message = "Server error from external service";
-        } else {
-            errorCode = ErrorCode.INTERNAL_ERROR;
-            message = ex.getMessage();
-        }
-
-        ApiResponse response = ApiResponse.builder()
-                .code(errorCode.getCode())
-                .data(ErrorResponse.builder()
-                        .type(errorCode.name())
-                        .message(message)
-                        .build())
-                .build();
-
-        return ResponseEntity.status(errorCode.getCode()).body(response);
+        return ResponseEntity.status(ex.getStatusCode()).body(ex.getResponseBodyAs(ApiResponse.class));
     }
 }

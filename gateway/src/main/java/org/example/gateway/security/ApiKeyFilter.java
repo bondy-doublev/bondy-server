@@ -1,6 +1,8 @@
 package org.example.gateway.security;
 
 import org.example.gateway.property.PropsConfig;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.cloud.gateway.filter.GatewayFilterChain;
 import org.springframework.cloud.gateway.filter.GlobalFilter;
 import org.springframework.core.Ordered;
@@ -21,6 +23,7 @@ import java.util.Objects;
 @Order(Ordered.HIGHEST_PRECEDENCE + 1)
 public class ApiKeyFilter implements GlobalFilter {
 
+    private static final Logger log = LoggerFactory.getLogger(ApiKeyFilter.class);
     private final WebClient webClient;
     private final AntPathMatcher matcher = new AntPathMatcher();
 
@@ -30,9 +33,8 @@ public class ApiKeyFilter implements GlobalFilter {
 
     public ApiKeyFilter(PropsConfig gatewayProps, WebClient.Builder webClientBuilder) {
         this.webClient = webClientBuilder.build();
-
         var apiKeyProps = gatewayProps.getApiKey();
-        this.headerName    = apiKeyProps.getHeader();
+        this.headerName = apiKeyProps.getHeader();
         this.authServiceUrl = apiKeyProps.getAuthUrl();
         this.publicPaths   = Objects.requireNonNullElse(apiKeyProps.getPublicPaths(), List.of());
     }
@@ -55,6 +57,7 @@ public class ApiKeyFilter implements GlobalFilter {
         }
 
         String apiKey = request.getHeaders().getFirst(headerName);
+
         if (apiKey == null || apiKey.isBlank()) {
             return FilterUtil.unauthorized(exchange, "Missing API Key");
         }
