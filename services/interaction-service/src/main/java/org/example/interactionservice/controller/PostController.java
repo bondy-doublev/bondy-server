@@ -1,7 +1,6 @@
 package org.example.interactionservice.controller;
 
 import io.swagger.v3.oas.annotations.tags.Tag;
-import jakarta.validation.Valid;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -55,4 +54,10 @@ public class PostController {
         return new ApiResponse(newPost);
     }
 
+    @DeleteMapping
+    ApiResponse deletePost(@RequestParam Long postId) {
+        postService.deletePost(ContextUser.get().getUserId(), postId);
+
+        return new ApiResponse();
+    }
 }
