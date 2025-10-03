@@ -101,6 +101,10 @@
 
   <!-- KHÔNG ép dependencies chung vào tất cả module -->
   <dependencies>
+      <dependency>
+          <groupId>org.springframework.boot</groupId>
+          <artifactId>spring-boot</artifactId>
+      </dependency>
   </dependencies>
 
   <modules>
