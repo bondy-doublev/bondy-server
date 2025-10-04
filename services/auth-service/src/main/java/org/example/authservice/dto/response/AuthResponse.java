@@ -11,8 +11,9 @@ import org.example.authservice.dto.RefreshTokenDto;
 @Builder
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class AuthResponse {
-    String accessToken;
+  String accessToken;
+  UserResponse user;
 
-    @JsonIgnore
-    RefreshTokenDto refreshToken;
+  @JsonIgnore
+  RefreshTokenDto refreshToken;
 }
