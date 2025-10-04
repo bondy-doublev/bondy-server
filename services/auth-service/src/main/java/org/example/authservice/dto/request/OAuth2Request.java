@@ -9,21 +9,20 @@ import lombok.experimental.FieldDefaults;
 @Data
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class OAuth2Request {
-    @NotBlank(message = "Provider is required")
-    String provider;
+  @NotBlank(message = "Provider is required")
+  String provider;
 
-    @NotBlank(message = "Email is required")
-    @Email(message = "Invalid email format")
-    String email;
+  @NotBlank(message = "Email is required")
+  @Email(message = "Invalid email format")
+  String email;
 
-    @NotBlank(message = "Avatar url is required")
-    String avatarUrl;
+  @NotBlank(message = "Avatar url is required")
+  String avatarUrl;
 
-    @NotBlank(message = "First name is required")
-    String firstName;
+  @NotBlank(message = "First name is required")
+  String firstName;
 
-    String middleName;
+  String middleName;
 
-    @NotBlank(message = "Last name is required")
-    String lastName;
+  String lastName;
 }

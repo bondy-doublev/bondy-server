@@ -1,14 +1,22 @@
 package org.example.authservice.service;
 
-import org.example.authservice.dto.RefreshTokenDto;
-import org.example.authservice.dto.UserTokenDto;
+import jakarta.transaction.Transactional;
+import lombok.AccessLevel;
+import lombok.RequiredArgsConstructor;
+import lombok.experimental.FieldDefaults;
 import org.example.authservice.client.MailClient;
 import org.example.authservice.config.security.ContextUser;
 import org.example.authservice.config.security.JwtService;
+import org.example.authservice.dto.RefreshTokenDto;
+import org.example.authservice.dto.UserTokenDto;
 import org.example.authservice.dto.request.*;
 import org.example.authservice.dto.response.AuthResponse;
 import org.example.authservice.dto.response.MessageResponse;
-import org.example.authservice.entity.*;
+import org.example.authservice.dto.response.UserResponse;
+import org.example.authservice.entity.Account;
+import org.example.authservice.entity.PreRegistration;
+import org.example.authservice.entity.RefreshToken;
+import org.example.authservice.entity.User;
 import org.example.authservice.property.PropsConfig;
 import org.example.authservice.repository.AccountRepository;
 import org.example.authservice.repository.PreRegRepository;
@@ -16,10 +24,6 @@ import org.example.authservice.repository.RefreshTokenRepository;
 import org.example.authservice.repository.UserRepository;
 import org.example.authservice.service.interfaces.IAuthService;
 import org.example.authservice.service.interfaces.IOtpService;
-import jakarta.transaction.Transactional;
-import lombok.AccessLevel;
-import lombok.RequiredArgsConstructor;
-import lombok.experimental.FieldDefaults;
 import org.example.commonweb.DTO.request.MailRequest;
 import org.example.commonweb.enums.*;
 import org.example.commonweb.exception.AppException;
@@ -35,331 +39,353 @@ import java.util.UUID;
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class AuthService implements IAuthService {
-    UserRepository userRepo;
-    RefreshTokenRepository refreshTokenRepo;
-    PreRegRepository preRegRepo;
-    OtpService otpService;
-    AccountRepository accountRepo;
+  UserRepository userRepo;
+  RefreshTokenRepository refreshTokenRepo;
+  PreRegRepository preRegRepo;
+  OtpService otpService;
+  AccountRepository accountRepo;
 
-    PasswordEncoder passwordEncoder;
-    JwtService jwtService;
-    MailClient mailClient;
+  PasswordEncoder passwordEncoder;
+  JwtService jwtService;
+  MailClient mailClient;
 
-    PropsConfig props;
+  PropsConfig props;
 
-    @Override
-    @Transactional
-    public AuthResponse oauth2(OAuth2Request request) {
-        Provider oauthProvider = Provider.valueOf(request.getProvider().toUpperCase());
+  @Override
+  @Transactional
+  public AuthResponse oauth2(OAuth2Request request) {
+    Provider oauthProvider = Provider.valueOf(request.getProvider().toUpperCase());
 
-        User user = userRepo.findByEmail(request.getEmail()).orElse(null);
+    User user = userRepo.findByEmail(request.getEmail()).orElse(null);
 
-        if (user == null) {
-            User newUser = User.builder()
-                    .email(request.getEmail())
-                    .firstName(request.getFirstName())
-                    .middleName(request.getMiddleName())
-                    .lastName(request.getLastName())
-                    .avatarUrl(request.getAvatarUrl())
-                    .role(Role.USER.name())
-                    .build();
+    if (user == null) {
+      User newUser = User.builder()
+        .email(request.getEmail())
+        .firstName(request.getFirstName())
+        .middleName(request.getMiddleName())
+        .lastName(request.getLastName())
+        .avatarUrl(request.getAvatarUrl())
+        .role(Role.USER.name())
+        .build();
 
-            Account oauthAccount = Account.builder()
-                    .user(newUser)
-                    .provider(oauthProvider.name())
-                    .build();
-            newUser.addAccount(oauthAccount);
+      Account oauthAccount = Account.builder()
+        .user(newUser)
+        .provider(oauthProvider.name())
+        .build();
+      newUser.addAccount(oauthAccount);
 
-            String rawPassword = generateDefaultPassword(request.getFirstName());
-            Account localAccount = Account.builder()
-                    .user(newUser)
-                    .passwordHash(passwordEncoder.encode(rawPassword))
-                    .provider(Provider.LOCAL.name())
-                    .build();
-            newUser.addAccount(localAccount);
+      String rawPassword = generateDefaultPassword(request.getFirstName());
+      Account localAccount = Account.builder()
+        .user(newUser)
+        .passwordHash(passwordEncoder.encode(rawPassword))
+        .provider(Provider.LOCAL.name())
+        .build();
+      newUser.addAccount(localAccount);
 
-            userRepo.save(newUser);
+      userRepo.save(newUser);
 
-            sendWelcomeMail(newUser, rawPassword, oauthProvider);
+      sendWelcomeMail(newUser, rawPassword, oauthProvider);
 
-            return buildAuthResponse(new UserTokenDto(newUser.getId(), newUser.getEmail(), newUser.getRole()));
-        }
+      UserTokenDto tokenDto = new UserTokenDto(newUser.getId(), newUser.getEmail(), newUser.getRole());
+      AuthResponse tokenResponse = buildAuthResponse(tokenDto);
 
-        if (user.getAvatarUrl() == null) {
-            user.setAvatarUrl(request.getAvatarUrl());
-        }
-
-        boolean hasThisOauth = user.getAccounts() != null &&
-                user.getAccounts().stream().anyMatch(a -> oauthProvider.name().equals(a.getProvider()));
-        if (!hasThisOauth) {
-            Account oauthAccount = Account.builder()
-                    .user(user)
-                    .provider(oauthProvider.name())
-                    .build();
-            user.addAccount(oauthAccount);
-        }
-
-        boolean hasLocal = user.getAccounts() != null &&
-                user.getAccounts().stream().anyMatch(a -> Provider.LOCAL.name().equals(a.getProvider()));
-        if (!hasLocal) {
-            String rawPassword = generateDefaultPassword(user.getFirstName());
-            Account localAccount = Account.builder()
-                    .user(user)
-                    .passwordHash(passwordEncoder.encode(rawPassword))
-                    .provider(Provider.LOCAL.name())
-                    .build();
-            user.addAccount(localAccount);
-
-            sendWelcomeMail(user, rawPassword, oauthProvider);
-        }
-
-        userRepo.save(user);
-        return buildAuthResponse(new UserTokenDto(user.getId(), user.getEmail(), user.getRole()));
+      return AuthResponse.builder()
+        .accessToken(tokenResponse.getAccessToken())
+        .refreshToken(tokenResponse.getRefreshToken())
+        .user(UserResponse.fromEntity(newUser))
+        .build();
     }
 
-    @Override
-    public AuthResponse login(LoginRequest request) {
-        String errorMessage = "Invalid email or password.";
-
-        User user = userRepo.findByEmail(request.getEmail())
-                .orElseThrow(() -> new AppException(ErrorCode.UNAUTHORIZED, errorMessage));
-
-        if (!user.getActive())
-            throw new AppException(ErrorCode.UNAUTHORIZED, "Your account is inactive");
-
-        Account localAccount = user.getAccounts().stream()
-                .filter(acc -> Provider.LOCAL.name().equals(acc.getProvider()))
-                .findFirst()
-                .orElseThrow(() -> new AppException(ErrorCode.UNAUTHORIZED, errorMessage));
-
-        if (!passwordEncoder.matches(request.getPassword(), localAccount.getPasswordHash()))
-            throw new AppException(ErrorCode.UNAUTHORIZED, errorMessage);
-
-        return buildAuthResponse(new UserTokenDto(user.getId(), user.getEmail(), user.getRole()));
+    if (user.getAvatarUrl() == null) {
+      user.setAvatarUrl(request.getAvatarUrl());
     }
 
-    @Override
-    public AuthResponse refreshToken(String rawToken) {
-        Long userId = ContextUser.get().getUserId();
-
-        String tokenHash = refreshTokenRepo.findValidByUserId(userId)
-                .orElseThrow(() -> new AppException(ErrorCode.UNAUTHORIZED, "Invalid refresh token"));
-
-        if (!passwordEncoder.matches(rawToken, tokenHash))
-            throw new AppException(ErrorCode.UNAUTHORIZED, "Invalid refresh token");
-
-        return buildAuthResponse(new UserTokenDto(userId, ContextUser.get().getEmail(), ContextUser.get().getRole()));
+    boolean hasThisOauth = user.getAccounts() != null &&
+      user.getAccounts().stream().anyMatch(a -> oauthProvider.name().equals(a.getProvider()));
+    if (!hasThisOauth) {
+      Account oauthAccount = Account.builder()
+        .user(user)
+        .provider(oauthProvider.name())
+        .build();
+      user.addAccount(oauthAccount);
     }
 
-    @Override
-    @Transactional
-    public MessageResponse registerInit(RegisterRequest request) {
-        User user = userRepo.findByEmail(request.getEmail())
-                .orElse(null);
+    boolean hasLocal = user.getAccounts() != null &&
+      user.getAccounts().stream().anyMatch(a -> Provider.LOCAL.name().equals(a.getProvider()));
+    if (!hasLocal) {
+      String rawPassword = generateDefaultPassword(user.getFirstName());
+      Account localAccount = Account.builder()
+        .user(user)
+        .passwordHash(passwordEncoder.encode(rawPassword))
+        .provider(Provider.LOCAL.name())
+        .build();
+      user.addAccount(localAccount);
 
-        if (user != null)
-            throw new AppException(ErrorCode.DUPLICATE_RESOURCE, "This email has already been registered");
-
-        PreRegistration preReg = preRegRepo.findByEmail(request.getEmail()).orElse(null);
-
-        if (preReg == null) {
-            preReg = PreRegistration.builder()
-                    .email(request.getEmail())
-                    .firstName(request.getFirstName())
-                    .middleName(request.getMiddleName())
-                    .lastName(request.getLastName())
-                    .dob(request.getDob())
-                    .passwordHash(passwordEncoder.encode(request.getPassword()))
-                    .gender(request.getGender())
-                    .build();
-            preRegRepo.save(preReg);
-        }
-
-        IOtpService.OtpResult otp = otpService.generateOtpCode("pre_registration", preReg.getId(), Action.REGISTER);
-
-        MailRequest mail = MailRequest.builder()
-                .to(preReg.getEmail())
-                .template(MailPurpose.OTP_REGISTRATION.template)
-                .locale(Locale.getDefault())
-                .model(Map.of(
-                        "firstName", preReg.getFirstName(),
-                        "otp", otp.raw(),
-                        "expiresMinutes", props.getOtp().getTtlMinutes()
-                ))
-                .build();
-
-        mailClient.send(mail);
-
-        return new MessageResponse("OTP Code sent to your email.");
+      sendWelcomeMail(user, rawPassword, oauthProvider);
     }
 
-    @Override
-    @Transactional
-    public void registerVerify(String email, String rawCode) {
-        PreRegistration preReg = preRegRepo.findByEmail(email)
-                .orElseThrow(() -> new AppException(ErrorCode.BAD_REQUEST,
-                        "Verification information is incorrect. Please restart the registration process"));
+    userRepo.save(user);
+    UserTokenDto tokenDto = new UserTokenDto(user.getId(), user.getEmail(), user.getRole());
+    AuthResponse tokenResponse = buildAuthResponse(tokenDto);
 
-        otpService.validateOtp(rawCode, preReg.getId(), Action.REGISTER);
+    return AuthResponse.builder()
+      .accessToken(tokenResponse.getAccessToken())
+      .refreshToken(tokenResponse.getRefreshToken())
+      .user(UserResponse.fromEntity(user))
+      .build();
+  }
 
-        User newUser = User.builder()
-                .email(email)
-                .firstName(preReg.getFirstName())
-                .middleName(preReg.getMiddleName())
-                .lastName(preReg.getLastName())
-                .dob(preReg.getDob())
-                .gender(preReg.getGender())
-                .role(Role.USER.name())
-                .active(true)
-                .build();
+  @Override
+  public AuthResponse login(LoginRequest request) {
+    String errorMessage = "Invalid email or password.";
 
-        Account newAccount = Account.builder()
-                .user(newUser)
-                .provider(Provider.LOCAL.name())
-                .passwordHash(preReg.getPasswordHash())
-                .build();
+    User user = userRepo.findByEmail(request.getEmail())
+      .orElseThrow(() -> new AppException(ErrorCode.UNAUTHORIZED, errorMessage));
 
-        newUser.addAccount(newAccount);
+    if (!user.getActive())
+      throw new AppException(ErrorCode.UNAUTHORIZED, "Your account is inactive");
 
-        userRepo.save(newUser);
+    Account localAccount = user.getAccounts().stream()
+      .filter(acc -> Provider.LOCAL.name().equals(acc.getProvider()))
+      .findFirst()
+      .orElseThrow(() -> new AppException(ErrorCode.UNAUTHORIZED, errorMessage));
 
-        sendRegistrationWelcomeMail(newUser);
+    if (!passwordEncoder.matches(request.getPassword(), localAccount.getPasswordHash()))
+      throw new AppException(ErrorCode.UNAUTHORIZED, errorMessage);
 
-        preRegRepo.delete(preReg);
+    UserTokenDto tokenDto = new UserTokenDto(user.getId(), user.getEmail(), user.getRole());
+    AuthResponse tokenResponse = buildAuthResponse(tokenDto);
+
+    return AuthResponse.builder()
+      .accessToken(tokenResponse.getAccessToken())
+      .refreshToken(tokenResponse.getRefreshToken())
+      .user(UserResponse.fromEntity(user))
+      .build();
+  }
+
+
+  @Override
+  public AuthResponse refreshToken(String rawToken) {
+    Long userId = ContextUser.get().getUserId();
+
+    String tokenHash = refreshTokenRepo.findValidByUserId(userId)
+      .orElseThrow(() -> new AppException(ErrorCode.UNAUTHORIZED, "Invalid refresh token"));
+
+    if (!passwordEncoder.matches(rawToken, tokenHash))
+      throw new AppException(ErrorCode.UNAUTHORIZED, "Invalid refresh token");
+
+    return buildAuthResponse(new UserTokenDto(userId, ContextUser.get().getEmail(), ContextUser.get().getRole()));
+  }
+
+  @Override
+  @Transactional
+  public MessageResponse registerInit(RegisterRequest request) {
+    User user = userRepo.findByEmail(request.getEmail())
+      .orElse(null);
+
+    if (user != null)
+      throw new AppException(ErrorCode.DUPLICATE_RESOURCE, "This email has already been registered");
+
+    PreRegistration preReg = preRegRepo.findByEmail(request.getEmail()).orElse(null);
+
+    if (preReg == null) {
+      preReg = PreRegistration.builder()
+        .email(request.getEmail())
+        .firstName(request.getFirstName())
+        .middleName(request.getMiddleName())
+        .lastName(request.getLastName())
+        .dob(request.getDob())
+        .passwordHash(passwordEncoder.encode(request.getPassword()))
+        .gender(request.getGender())
+        .build();
+      preRegRepo.save(preReg);
     }
 
-    @Override
-    public void changePassword(Long userId, ChangePasswordRequest request) {
-        if (!request.getNewPassword().equals(request.getConfirmPassword()))
-            throw new AppException(ErrorCode.VALIDATION_ERROR, "Confirm password does not match new password");
+    IOtpService.OtpResult otp = otpService.generateOtpCode("pre_registration", preReg.getId(), Action.REGISTER);
 
-        User user = userRepo.findById(userId)
-                .orElseThrow(() -> new AppException(ErrorCode.BAD_REQUEST, "User not found"));
+    MailRequest mail = MailRequest.builder()
+      .to(preReg.getEmail())
+      .template(MailPurpose.OTP_REGISTRATION.template)
+      .locale(Locale.getDefault())
+      .model(Map.of(
+        "firstName", preReg.getFirstName(),
+        "otp", otp.raw(),
+        "expiresMinutes", props.getOtp().getTtlMinutes()
+      ))
+      .build();
 
-        Account account = user.getAccounts()
-                .stream()
-                .filter(acc -> Provider.LOCAL.name().equals(acc.getProvider()))
-                .findFirst()
-                .orElseThrow(() -> new AppException(ErrorCode.BAD_REQUEST, "Account not exist"));
+    mailClient.send(mail);
 
-        if (!passwordEncoder.matches(request.getOldPassword(), account.getPasswordHash()))
-            throw new AppException(ErrorCode.BAD_REQUEST, "Old password incorrect");
+    return new MessageResponse("OTP Code sent to your email.");
+  }
 
-        String passwordHash = passwordEncoder.encode(request.getNewPassword());
+  @Override
+  @Transactional
+  public void registerVerify(String email, String rawCode) {
+    PreRegistration preReg = preRegRepo.findByEmail(email)
+      .orElseThrow(() -> new AppException(ErrorCode.BAD_REQUEST,
+        "Verification information is incorrect. Please restart the registration process"));
 
-        account.setPasswordHash(passwordHash);
+    otpService.validateOtp(rawCode, preReg.getId(), Action.REGISTER);
 
-        accountRepo.save(account);
-    }
+    User newUser = User.builder()
+      .email(email)
+      .firstName(preReg.getFirstName())
+      .middleName(preReg.getMiddleName())
+      .lastName(preReg.getLastName())
+      .dob(preReg.getDob())
+      .gender(preReg.getGender())
+      .role(Role.USER.name())
+      .active(true)
+      .build();
 
-    @Override
-    public MessageResponse sendResetPasswordOtp(String email) {
-        User user = userRepo.findByEmail(email)
-                .orElseThrow(() -> new AppException(ErrorCode.BAD_REQUEST, "User not found"));
+    Account newAccount = Account.builder()
+      .user(newUser)
+      .provider(Provider.LOCAL.name())
+      .passwordHash(preReg.getPasswordHash())
+      .build();
 
-        IOtpService.OtpResult otp = otpService.generateOtpCode("user", user.getId(), Action.RESET_PASSWORD);
+    newUser.addAccount(newAccount);
 
-        MailRequest mail = MailRequest.builder()
-                .to(email)
-                .template(MailPurpose.RESET_PASSWORD_OTP.template)
-                .locale(Locale.getDefault())
-                .model(Map.of(
-                        "firstName", user.getFirstName(),
-                        "otp", otp.raw(),
-                        "expiresMinutes", props.getOtp().getTtlMinutes()
-                ))
-                .build();
+    userRepo.save(newUser);
 
-        mailClient.send(mail);
+    sendRegistrationWelcomeMail(newUser);
 
-        return new MessageResponse("OTP Code sent to your email");
-    }
+    preRegRepo.delete(preReg);
+  }
 
-    @Override
-    public MessageResponse resetPassword(ResetPasswordRequest request) {
-        User user = userRepo.findByEmail(request.getEmail())
-                .orElseThrow(() -> new AppException(ErrorCode.BAD_REQUEST, "User not found"));
+  @Override
+  public void changePassword(Long userId, ChangePasswordRequest request) {
+    if (!request.getNewPassword().equals(request.getConfirmPassword()))
+      throw new AppException(ErrorCode.VALIDATION_ERROR, "Confirm password does not match new password");
 
-        if (!request.getNewPassword().equals(request.getConfirmPassword()))
-            throw new AppException(ErrorCode.VALIDATION_ERROR, "Confirm password does not match new password");
+    User user = userRepo.findById(userId)
+      .orElseThrow(() -> new AppException(ErrorCode.BAD_REQUEST, "User not found"));
 
-        otpService.validateOtp(request.getOtpCode(), user.getId(), Action.RESET_PASSWORD);
+    Account account = user.getAccounts()
+      .stream()
+      .filter(acc -> Provider.LOCAL.name().equals(acc.getProvider()))
+      .findFirst()
+      .orElseThrow(() -> new AppException(ErrorCode.BAD_REQUEST, "Account not exist"));
 
-        Account account = user.getAccounts()
-                .stream()
-                .filter(acc -> Provider.LOCAL.name().equals(acc.getProvider()))
-                .findFirst()
-                .orElseThrow(() -> new AppException(ErrorCode.BAD_REQUEST, "Account not exist"));
+    if (!passwordEncoder.matches(request.getOldPassword(), account.getPasswordHash()))
+      throw new AppException(ErrorCode.BAD_REQUEST, "Old password incorrect");
 
-        String passwordHash = passwordEncoder.encode(request.getNewPassword());
+    String passwordHash = passwordEncoder.encode(request.getNewPassword());
 
-        account.setPasswordHash(passwordHash);
-        accountRepo.save(account);
+    account.setPasswordHash(passwordHash);
 
-        return new MessageResponse("Reset password successfully");
-    }
+    accountRepo.save(account);
+  }
 
-    private String generateDefaultPassword(String firstName) {
-        return props.getEnvironment().equals("production")
-                ? firstName + props.getUser().getDefaultPasswordSuffix()
-                : "11111111";
-    }
+  @Override
+  public MessageResponse sendResetPasswordOtp(String email) {
+    User user = userRepo.findByEmail(email)
+      .orElseThrow(() -> new AppException(ErrorCode.BAD_REQUEST, "User not found"));
 
-    private AuthResponse buildAuthResponse(UserTokenDto user) {
-        var accessToken = jwtService.generateAccessToken(user);
-        var refreshToken = generateRefreshToken(user);
+    IOtpService.OtpResult otp = otpService.generateOtpCode("user", user.getId(), Action.RESET_PASSWORD);
 
-        return AuthResponse.builder()
-                .accessToken(accessToken)
-                .refreshToken(refreshToken)
-                .build();
-    }
+    MailRequest mail = MailRequest.builder()
+      .to(email)
+      .template(MailPurpose.RESET_PASSWORD_OTP.template)
+      .locale(Locale.getDefault())
+      .model(Map.of(
+        "firstName", user.getFirstName(),
+        "otp", otp.raw(),
+        "expiresMinutes", props.getOtp().getTtlMinutes()
+      ))
+      .build();
 
-    private RefreshTokenDto generateRefreshToken(UserTokenDto userDto) {
-        var token = UUID.randomUUID().toString();
-        var tokenHash = passwordEncoder.encode(token);
+    mailClient.send(mail);
 
-        User user = new User();
-        user.setId(userDto.getUserId());
+    return new MessageResponse("OTP Code sent to your email");
+  }
 
-        RefreshToken newToken = RefreshToken.builder()
-                .tokenHash(tokenHash)
-                .user(user)
-                .expiresAt(LocalDateTime.now().plusDays(7))
-                .build();
+  @Override
+  public MessageResponse resetPassword(ResetPasswordRequest request) {
+    User user = userRepo.findByEmail(request.getEmail())
+      .orElseThrow(() -> new AppException(ErrorCode.BAD_REQUEST, "User not found"));
 
-        refreshTokenRepo.revokeTokens(user.getId(), LocalDateTime.now());
-        refreshTokenRepo.save(newToken);
-        return new RefreshTokenDto(token, newToken.getExpiresAt());
-    }
+    if (!request.getNewPassword().equals(request.getConfirmPassword()))
+      throw new AppException(ErrorCode.VALIDATION_ERROR, "Confirm password does not match new password");
 
-    private void sendRegistrationWelcomeMail(User user) {
-        MailRequest mail = MailRequest.builder()
-                .to(user.getEmail())
-                .template(MailPurpose.WELCOME.template)
-                .locale(Locale.getDefault())
-                .model(Map.of(
-                        "firstName", user.getFirstName(),
-                        "email", user.getEmail()
-                ))
-                .build();
+    otpService.validateOtp(request.getOtpCode(), user.getId(), Action.RESET_PASSWORD);
 
-        mailClient.send(mail);
-    }
+    Account account = user.getAccounts()
+      .stream()
+      .filter(acc -> Provider.LOCAL.name().equals(acc.getProvider()))
+      .findFirst()
+      .orElseThrow(() -> new AppException(ErrorCode.BAD_REQUEST, "Account not exist"));
 
-    private void sendWelcomeMail(User user, String rawPassword, Provider provider) {
-        MailRequest mail = MailRequest.builder()
-                .to(user.getEmail())
-                .template(MailPurpose.OAUTH2_WELCOME.template)
-                .locale(Locale.getDefault())
-                .model(Map.of(
-                        "firstName", user.getFirstName(),
-                        "provider", provider.name(),
-                        "email", user.getEmail(),
-                        "password", rawPassword
-                ))
-                .build();
+    String passwordHash = passwordEncoder.encode(request.getNewPassword());
 
-        mailClient.send(mail);
-    }
+    account.setPasswordHash(passwordHash);
+    accountRepo.save(account);
+
+    return new MessageResponse("Reset password successfully");
+  }
+
+  private String generateDefaultPassword(String firstName) {
+    return props.getEnvironment().equals("production")
+      ? firstName + props.getUser().getDefaultPasswordSuffix()
+      : "11111111";
+  }
+
+  private AuthResponse buildAuthResponse(UserTokenDto user) {
+    var accessToken = jwtService.generateAccessToken(user);
+    var refreshToken = generateRefreshToken(user);
+
+    return AuthResponse.builder()
+      .accessToken(accessToken)
+      .refreshToken(refreshToken)
+      .build();
+  }
+
+  private RefreshTokenDto generateRefreshToken(UserTokenDto userDto) {
+    var token = UUID.randomUUID().toString();
+    var tokenHash = passwordEncoder.encode(token);
+
+    User user = new User();
+    user.setId(userDto.getUserId());
+
+    RefreshToken newToken = RefreshToken.builder()
+      .tokenHash(tokenHash)
+      .user(user)
+      .expiresAt(LocalDateTime.now().plusDays(7))
+      .build();
+
+    refreshTokenRepo.revokeTokens(user.getId(), LocalDateTime.now());
+    refreshTokenRepo.save(newToken);
+    return new RefreshTokenDto(token, newToken.getExpiresAt());
+  }
+
+  private void sendRegistrationWelcomeMail(User user) {
+    MailRequest mail = MailRequest.builder()
+      .to(user.getEmail())
+      .template(MailPurpose.WELCOME.template)
+      .locale(Locale.getDefault())
+      .model(Map.of(
+        "firstName", user.getFirstName(),
+        "email", user.getEmail()
+      ))
+      .build();
+
+    mailClient.send(mail);
+  }
+
+  private void sendWelcomeMail(User user, String rawPassword, Provider provider) {
+    MailRequest mail = MailRequest.builder()
+      .to(user.getEmail())
+      .template(MailPurpose.OAUTH2_WELCOME.template)
+      .locale(Locale.getDefault())
+      .model(Map.of(
+        "firstName", user.getFirstName(),
+        "provider", provider.name(),
+        "email", user.getEmail(),
+        "password", rawPassword
+      ))
+      .build();
+
+    mailClient.send(mail);
+  }
 }
