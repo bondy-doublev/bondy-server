@@ -1,11 +1,10 @@
 package org.example.interactionservice.controller;
 
 import io.swagger.v3.oas.annotations.tags.Tag;
-import jakarta.validation.Valid;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
-import org.example.commonweb.DTO.core.ApiResponse;
+import org.example.commonweb.DTO.core.AppApiResponse;
 import org.example.interactionservice.config.security.ContextUser;
 import org.example.interactionservice.dto.PageRequestDto;
 import org.example.interactionservice.dto.request.CreatePostRequest;
@@ -24,35 +23,35 @@ import java.util.List;
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class PostController {
-    IPostService postService;
+  IPostService postService;
 
-    @GetMapping("/new-feed")
-    ApiResponse getPosts(PageRequestDto dto) {
-        Page<Post> posts = postService.getNewFeed(dto.toPageable());
+  @GetMapping("/new-feed")
+  AppApiResponse getPosts(PageRequestDto dto) {
+    Page<Post> posts = postService.getNewFeed(dto.toPageable());
 
-        return new ApiResponse(posts);
-    }
+    return new AppApiResponse(posts);
+  }
 
-    @GetMapping("/wall")
-    ApiResponse getWall(PageRequestDto dto) {
-        Page<Post> posts = postService.getWall(ContextUser.get().getUserId(), dto.toPageable());
+  @GetMapping("/wall")
+  AppApiResponse getWall(PageRequestDto dto) {
+    Page<Post> posts = postService.getWall(ContextUser.get().getUserId(), dto.toPageable());
 
-        return new ApiResponse(posts);
-    }
+    return new AppApiResponse(posts);
+  }
 
-    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    ApiResponse createPost(
-            @RequestParam(value = "content", required = false) String content,
-            @RequestParam(value = "tagUserIds", required = false) List<Long> tagUserIds,
-            @RequestParam(value = "mediaFiles", required = false) List<MultipartFile> mediaFiles
-    ) {
-        CreatePostRequest request = new CreatePostRequest();
-        request.setContent(content);
-        request.setTagUserIds(tagUserIds);
-        request.setMediaFiles(mediaFiles);
+  @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+  AppApiResponse createPost(
+    @RequestParam(value = "content", required = false) String content,
+    @RequestParam(value = "tagUserIds", required = false) List<Long> tagUserIds,
+    @RequestParam(value = "mediaFiles", required = false) List<MultipartFile> mediaFiles
+  ) {
+    CreatePostRequest request = new CreatePostRequest();
+    request.setContent(content);
+    request.setTagUserIds(tagUserIds);
+    request.setMediaFiles(mediaFiles);
 
-        Post newPost = postService.createPost(ContextUser.get().getUserId(), request);
-        return new ApiResponse(newPost);
-    }
+    Post newPost = postService.createPost(ContextUser.get().getUserId(), request);
+    return new AppApiResponse(newPost);
+  }
 
 }
