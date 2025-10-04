@@ -18,59 +18,59 @@ import org.springframework.web.multipart.MultipartFile;
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 @RequiredArgsConstructor
 public class UserService implements IUserService {
-    UserRepository userRepository;
-    UploadClient uploadClient;
+  UserRepository userRepository;
+  UploadClient uploadClient;
 
-    @Override
-    public User getProfile(Long userId) {
-        return userRepository.findById(userId)
-                .orElseThrow(() -> new AppException(ErrorCode.ENTITY_NOT_FOUND, "Profile not found"));
+  @Override
+  public User getProfile(Long userId) {
+    return userRepository.findById(userId)
+      .orElseThrow(() -> new AppException(ErrorCode.ENTITY_NOT_FOUND, "Profile not found"));
+  }
+
+  @Override
+  @Transactional
+  public String uploadAvatar(MultipartFile file, Long userId) {
+    if (userId == null) {
+      throw new AppException(ErrorCode.BAD_REQUEST, "Your session is invalid, please log in again");
     }
 
-    @Override
-    @Transactional
-    public String uploadAvatar(MultipartFile file, Long userId) {
-        if (userId == null) {
-            throw new AppException(ErrorCode.BAD_REQUEST, "Your session is invalid, please log in again");
-        }
-
-        if (!userRepository.existsById(userId)) {
-            throw new AppException(ErrorCode.ENTITY_NOT_FOUND, "User with ID " + userId + " not found.");
-        }
-
-        try {
-            String avatarUrl = uploadClient.uploadAvatar(file);
-            int updated = userRepository.updateAvatarUrlById(userId, avatarUrl);
-
-            if (updated != 1) {
-                throw new AppException(ErrorCode.INTERNAL_ERROR, "Upload avatar fail, please try again.");
-            }
-
-            return avatarUrl;
-        } catch (Exception e) {
-            throw new AppException(ErrorCode.IO_ERROR, e.getMessage());
-        }
+    if (!userRepository.existsById(userId)) {
+      throw new AppException(ErrorCode.ENTITY_NOT_FOUND, "User with ID " + userId + " not found.");
     }
 
-    @Override
-    public User updateProfile(Long userId, UpdateUserDto dto) {
-        if (dto.getFirstName() == null
-                && dto.getMiddleName() == null
-                && dto.getLastName() == null
-                && dto.getDob() == null
-                && dto.getGender() == null) {
-            throw new AppException(ErrorCode.VALIDATION_ERROR, "No data provided for update");
-        }
+    try {
+      String avatarUrl = uploadClient.uploadAvatar(file);
+      int updated = userRepository.updateAvatarUrlById(userId, avatarUrl);
 
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new AppException(ErrorCode.ENTITY_NOT_FOUND, "User not found"));
+      if (updated != 1) {
+        throw new AppException(ErrorCode.INTERNAL_ERROR, "Upload avatar fail, please try again.");
+      }
 
-        if (dto.getFirstName() != null) user.setFirstName(dto.getFirstName());
-        if (dto.getMiddleName() != null) user.setMiddleName(dto.getMiddleName());
-        if (dto.getLastName() != null) user.setLastName(dto.getLastName());
-        if (dto.getDob() != null) user.setDob(dto.getDob());
-        if (dto.getGender() != null) user.setGender(dto.getGender());
-
-        return userRepository.save(user);
+      return avatarUrl;
+    } catch (Exception e) {
+      throw new AppException(ErrorCode.IO_ERROR, e.getMessage());
     }
+  }
+
+  @Override
+  public User updateProfile(Long userId, UpdateUserDto dto) {
+    if (dto.getFirstName() == null
+      && dto.getMiddleName() == null
+      && dto.getLastName() == null
+      && dto.getDob() == null
+      && dto.getGender() == null) {
+      throw new AppException(ErrorCode.VALIDATION_ERROR, "No data provided for update");
+    }
+
+    User user = userRepository.findById(userId)
+      .orElseThrow(() -> new AppException(ErrorCode.ENTITY_NOT_FOUND, "User not found"));
+
+    if (dto.getFirstName() != null) user.setFirstName(dto.getFirstName());
+    if (dto.getMiddleName() != null) user.setMiddleName(dto.getMiddleName());
+    if (dto.getLastName() != null) user.setLastName(dto.getLastName());
+    if (dto.getDob() != null) user.setDob(dto.getDob());
+    if (dto.getGender() != null) user.setGender(dto.getGender());
+
+    return userRepository.save(user);
+  }
 }

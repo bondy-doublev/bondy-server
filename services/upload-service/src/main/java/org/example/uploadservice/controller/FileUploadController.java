@@ -8,8 +8,10 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import org.example.commonweb.DTO.core.AppApiResponse;
+import org.example.commonweb.enums.ErrorCode;
+import org.example.commonweb.exception.AppException;
 import org.example.uploadservice.service.FileUploadService;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -37,15 +39,15 @@ public class FileUploadController {
     @ApiResponse(responseCode = "400", description = "Upload failed")
   })
   @PostMapping(value = "/local", consumes = "multipart/form-data")
-  public ResponseEntity<?> uploadLocal(
+  public AppApiResponse uploadLocal(
     @Parameter(description = "File to upload", required = true)
     @RequestParam("file") MultipartFile file
   ) {
     try {
       String result = fileUploadService.uploadFileLocal(file);
-      return ResponseEntity.ok(result);
+      return new AppApiResponse(result);
     } catch (Exception e) {
-      return ResponseEntity.badRequest().body("Upload failed: " + e.getMessage());
+      throw new AppException(ErrorCode.IO_ERROR, e.getMessage());
     }
   }
 
@@ -57,15 +59,15 @@ public class FileUploadController {
     @ApiResponse(responseCode = "400", description = "Upload failed")
   })
   @PostMapping(value = "/local/multiple", consumes = "multipart/form-data")
-  public ResponseEntity<?> uploadMultipleLocal(
+  public AppApiResponse uploadMultipleLocal(
     @Parameter(description = "Files to upload", required = true)
     @RequestParam("files") List<MultipartFile> files
   ) {
     try {
       List<String> results = fileUploadService.uploadMultipleFilesLocal(files);
-      return ResponseEntity.ok(results);
+      return new AppApiResponse(results);
     } catch (Exception e) {
-      return ResponseEntity.badRequest().body("Upload failed: " + e.getMessage());
+      throw new AppException(ErrorCode.IO_ERROR, e.getMessage());
     }
   }
 
@@ -77,15 +79,15 @@ public class FileUploadController {
     @ApiResponse(responseCode = "400", description = "Upload failed")
   })
   @PostMapping(value = "/cloudinary", consumes = "multipart/form-data")
-  public ResponseEntity<?> uploadCloudinary(
+  public AppApiResponse uploadCloudinary(
     @Parameter(description = "File to upload", required = true)
     @RequestParam("file") MultipartFile file
   ) {
     try {
       String url = fileUploadService.uploadFileCloudinary(file);
-      return ResponseEntity.ok(url);
+      return new AppApiResponse(url);
     } catch (Exception e) {
-      return ResponseEntity.badRequest().body("Upload failed: " + e.getMessage());
+      throw new AppException(ErrorCode.IO_ERROR, e.getMessage());
     }
   }
 
@@ -97,15 +99,15 @@ public class FileUploadController {
     @ApiResponse(responseCode = "400", description = "Upload failed")
   })
   @PostMapping(value = "/cloudinary/multiple", consumes = "multipart/form-data")
-  public ResponseEntity<?> uploadMultipleCloudinary(
+  public AppApiResponse uploadMultipleCloudinary(
     @Parameter(description = "Files to upload", required = true)
     @RequestParam("files") List<MultipartFile> files
   ) {
     try {
       List<String> urls = fileUploadService.uploadMultipleFilesCloudinary(files);
-      return ResponseEntity.ok(urls);
+      return new AppApiResponse(urls);
     } catch (Exception e) {
-      return ResponseEntity.badRequest().body("Upload failed: " + e.getMessage());
+      throw new AppException(ErrorCode.IO_ERROR, e.getMessage());
     }
   }
 }
