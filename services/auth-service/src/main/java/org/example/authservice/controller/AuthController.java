@@ -26,7 +26,7 @@ import java.time.ZoneId;
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class AuthController {
     IAuthService authService;
-
+    
     @PostMapping("/login")
     ApiResponse login(@RequestBody @Valid LoginRequest request,
                       HttpServletResponse response)
