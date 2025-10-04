@@ -8,13 +8,13 @@ import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import org.example.authservice.config.security.ContextUser;
+import org.example.authservice.dto.RefreshTokenDto;
 import org.example.authservice.dto.request.*;
 import org.example.authservice.dto.response.AuthResponse;
 import org.example.authservice.dto.response.MessageResponse;
-import org.example.authservice.dto.RefreshTokenDto;
 import org.example.authservice.service.interfaces.IAuthService;
 import org.example.authservice.util.CookieUtil;
-import org.example.commonweb.DTO.core.ApiResponse;
+import org.example.commonweb.DTO.core.AppApiResponse;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.ZoneId;
@@ -25,88 +25,85 @@ import java.time.ZoneId;
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class AuthController {
-    IAuthService authService;
-    
-    @PostMapping("/login")
-    ApiResponse login(@RequestBody @Valid LoginRequest request,
-                      HttpServletResponse response)
-    {
-        AuthResponse authResponse = authService.login(request);
+  IAuthService authService;
 
-        RefreshTokenDto token = authResponse.getRefreshToken();
+  @PostMapping("/login")
+  AppApiResponse login(@RequestBody @Valid LoginRequest request,
+                       HttpServletResponse response) {
+    AuthResponse authResponse = authService.login(request);
 
-        CookieUtil.addRefreshCookie(
-                response,
-                token.getToken(),
-                token.getExpiresAt().atZone(ZoneId.systemDefault()).toInstant()
-        );
+    RefreshTokenDto token = authResponse.getRefreshToken();
 
-        return new ApiResponse(authResponse);
-    }
+    CookieUtil.addRefreshCookie(
+      response,
+      token.getToken(),
+      token.getExpiresAt().atZone(ZoneId.systemDefault()).toInstant()
+    );
 
-    @PostMapping("/oauth2")
-    ApiResponse oauth2(@RequestBody @Valid OAuth2Request request,
-                           HttpServletResponse response)
-    {
-        AuthResponse authResponse = authService.oauth2(request);
+    return new AppApiResponse(authResponse);
+  }
 
-        RefreshTokenDto token = authResponse.getRefreshToken();
+  @PostMapping("/oauth2")
+  AppApiResponse oauth2(@RequestBody @Valid OAuth2Request request,
+                        HttpServletResponse response) {
+    AuthResponse authResponse = authService.oauth2(request);
 
-        CookieUtil.addRefreshCookie(
-                response,
-                token.getToken(),
-                token.getExpiresAt().atZone(ZoneId.systemDefault()).toInstant()
-        );
+    RefreshTokenDto token = authResponse.getRefreshToken();
 
-        return new ApiResponse(authResponse);
-    }
+    CookieUtil.addRefreshCookie(
+      response,
+      token.getToken(),
+      token.getExpiresAt().atZone(ZoneId.systemDefault()).toInstant()
+    );
 
-    @PostMapping("/refresh")
-    ApiResponse refreshToken(@Parameter(hidden = true) @CookieValue(value = "refreshToken") String refreshToken,
-                             HttpServletResponse response)
-    {
-        AuthResponse authResponse = authService.refreshToken(refreshToken);
-        RefreshTokenDto token = authResponse.getRefreshToken();
+    return new AppApiResponse(authResponse);
+  }
 
-        CookieUtil.addRefreshCookie(
-                response,
-                token.getToken(),
-                token.getExpiresAt().atZone(ZoneId.systemDefault()).toInstant()
-        );
+  @PostMapping("/refresh")
+  AppApiResponse refreshToken(@Parameter(hidden = true) @CookieValue(value = "refreshToken") String refreshToken,
+                              HttpServletResponse response) {
+    AuthResponse authResponse = authService.refreshToken(refreshToken);
+    RefreshTokenDto token = authResponse.getRefreshToken();
 
-        return new ApiResponse(authResponse);
-    }
+    CookieUtil.addRefreshCookie(
+      response,
+      token.getToken(),
+      token.getExpiresAt().atZone(ZoneId.systemDefault()).toInstant()
+    );
 
-    @PostMapping("/register/init")
-    ApiResponse registerInit(@RequestBody @Valid RegisterRequest request) {
-        MessageResponse response = authService.registerInit(request);
-        return new ApiResponse(response);
-    }
+    return new AppApiResponse(authResponse);
+  }
 
-    @PostMapping("/register/verify")
-    ApiResponse registerVerify(@RequestBody @Valid OtpVerifyRequest request) {
-        authService.registerVerify(request.getEmail(), request.getOtpCode());
-        return new ApiResponse();
-    }
+  @PostMapping("/register/init")
+  AppApiResponse registerInit(@RequestBody @Valid RegisterRequest request) {
+    MessageResponse response = authService.registerInit(request);
+    return new AppApiResponse(response);
+  }
 
-    @PostMapping("/change-password")
-    ApiResponse changePassword(@RequestBody @Valid ChangePasswordRequest request) {
-        authService.changePassword(ContextUser.get().getUserId(), request);
+  @PostMapping("/register/verify")
+  AppApiResponse registerVerify(@RequestBody @Valid OtpVerifyRequest request) {
+    authService.registerVerify(request.getEmail(), request.getOtpCode());
+    return new AppApiResponse();
+  }
 
-        return new ApiResponse(new MessageResponse("Change password successfully."));
-    }
+  @PostMapping("/change-password")
+  AppApiResponse changePassword(@RequestBody @Valid ChangePasswordRequest request) {
+    authService.changePassword(ContextUser.get().getUserId(), request);
 
-    @PostMapping("/reset-password-otp")
-    ApiResponse sendOtp(@RequestBody @Valid OtpRequest request) {
-        MessageResponse response = authService.sendResetPasswordOtp(request.getEmail());
+    return new AppApiResponse(new MessageResponse("Change password successfully."));
+  }
 
-        return new ApiResponse(response);
-    }
+  @PostMapping("/reset-password-otp")
+  AppApiResponse sendOtp(@RequestBody @Valid OtpRequest request) {
+    MessageResponse response = authService.sendResetPasswordOtp(request.getEmail());
 
-    @PostMapping("/reset-password")
-    ApiResponse resetPassword(@RequestBody @Valid ResetPasswordRequest request) {
-        MessageResponse response = authService.resetPassword(request);
+    return new AppApiResponse(response);
+  }
 
-        return new ApiResponse(response);
-    }
+  @PostMapping("/reset-password")
+  AppApiResponse resetPassword(@RequestBody @Valid ResetPasswordRequest request) {
+    MessageResponse response = authService.resetPassword(request);
+
+    return new AppApiResponse(response);
+  }
 }

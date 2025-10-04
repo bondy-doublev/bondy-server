@@ -4,7 +4,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
-import org.example.commonweb.DTO.core.ApiResponse;
+import org.example.commonweb.DTO.core.AppApiResponse;
 import org.example.interactionservice.config.security.ContextUser;
 import org.example.interactionservice.dto.PageRequestDto;
 import org.example.interactionservice.dto.request.CreatePostRequest;
@@ -28,44 +28,33 @@ public class PostController {
   IPostService postService;
 
   @GetMapping("/new-feed")
-  ApiResponse getPosts(PageRequestDto dto) {
+  AppApiResponse getPosts(PageRequestDto dto) {
     Page<Post> posts = postService.getNewFeed(dto.toPageable());
 
-    return new ApiResponse(posts);
+    return new AppApiResponse(posts);
   }
 
   @GetMapping("/wall")
-  ApiResponse getWall(PageRequestDto dto) {
+  AppApiResponse getWall(PageRequestDto dto) {
     Page<Post> posts = postService.getWall(ContextUser.get().getUserId(), dto.toPageable());
 
-    return new ApiResponse(posts);
+    return new AppApiResponse(posts);
   }
 
   @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-  public ApiResponse createPost(
-    @RequestPart(value = "content", required = false) String content,
-    @RequestPart(value = "tagUserIds", required = false) String tagUserIdsCsv,
-    @RequestPart(value = "mediaFiles", required = false) List<MultipartFile> mediaFiles
+  AppApiResponse createPost(
+    @RequestParam(value = "content", required = false) String content,
+    @RequestParam(value = "tagUserIds", required = false) List<Long> tagUserIds,
+    @RequestParam(value = "mediaFiles", required = false) List<MultipartFile> mediaFiles
   ) {
     CreatePostRequest request = new CreatePostRequest();
     request.setContent(content);
-    if (tagUserIdsCsv != null && !tagUserIdsCsv.isBlank()) {
-      List<Long> ids = Arrays.stream(tagUserIdsCsv.split(","))
-        .map(String::trim)
-        .filter(s -> !s.isEmpty())
-        .map(Long::valueOf)
-        .collect(Collectors.toList());
-      request.setTagUserIds(ids);
-    }
+    request.setTagUserIds(tagUserIds);
     request.setMediaFiles(mediaFiles);
 
     Post newPost = postService.createPost(ContextUser.get().getUserId(), request);
-    return new ApiResponse(newPost);
+    return new AppApiResponse(newPost);
   }
-
-  @DeleteMapping
-  ApiResponse deletePost(@RequestParam Long postId) {
-    postService.deletePost(ContextUser.get().getUserId(), postId);
 
     return new ApiResponse();
   }

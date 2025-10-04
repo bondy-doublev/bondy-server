@@ -1,9 +1,9 @@
 version: "3.9"
 
 services:
-  postgres:
+  postgres-auth:
     image: postgres:15
-    container_name: postgres-bondy
+    container_name: postgres-auth
     restart: always
     ports:
       - "5432:5432"
@@ -12,7 +12,21 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: 123456
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - postgres_auth_data:/var/lib/postgresql/data
+
+  postgres-interaction:
+    image: postgres:15
+    container_name: postgres-interaction
+    restart: always
+    ports:
+      - "5433:5432"
+    environment:
+      POSTGRES_DB: bondy-interaction
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: 123456
+    volumes:
+      - postgres_interaction_data:/var/lib/postgresql/data
 
 volumes:
-  postgres_data:
+  postgres_auth_data:
+  postgres_interaction_data:
