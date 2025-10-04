@@ -15,7 +15,9 @@ import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Tag(name = "Post")
 @RestController
@@ -54,4 +56,6 @@ public class PostController {
     return new AppApiResponse(newPost);
   }
 
+    return new ApiResponse();
+  }
 }

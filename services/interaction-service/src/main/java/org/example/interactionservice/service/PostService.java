@@ -9,9 +9,11 @@ import org.example.interactionservice.client.UploadClient;
 import org.example.interactionservice.dto.request.CreatePostRequest;
 import org.example.interactionservice.entity.MediaAttachment;
 import org.example.interactionservice.entity.Post;
+import org.example.interactionservice.entity.Share;
 import org.example.interactionservice.enums.MediaType;
 import org.example.interactionservice.property.PropsConfig;
 import org.example.interactionservice.repository.PostRepository;
+import org.example.interactionservice.repository.ShareRepository;
 import org.example.interactionservice.service.interfaces.IPostService;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -30,6 +32,7 @@ import java.util.stream.Collectors;
 public class PostService implements IPostService {
     PropsConfig props;
     PostRepository postRepo;
+    ShareRepository shareRepo;
 
     UploadClient uploadClient;
 
@@ -88,6 +91,25 @@ public class PostService implements IPostService {
         }
 
         return postRepo.save(newPost);
+    }
+
+    @Override
+    public void deletePost(Long userId, Long postId) {
+        Post post = postRepo.findById(postId)
+                .orElseThrow(() -> new AppException(ErrorCode.ENTITY_NOT_FOUND, "Post with id " + postId + " not found"));
+
+        if (post.getUserId().equals(userId)) {
+            postRepo.delete(post);
+            return;
+        }
+
+        Set<Share> shares = post.getShares().stream().filter(s -> s.getUserId().equals(userId)).collect(Collectors.toSet());
+
+        if (shares.isEmpty()) {
+            throw new AppException(ErrorCode.BAD_REQUEST, "Anything to delete");
+        }
+
+        shareRepo.deleteAll(shares);
     }
 
     private boolean isVideoFile(MultipartFile file) {

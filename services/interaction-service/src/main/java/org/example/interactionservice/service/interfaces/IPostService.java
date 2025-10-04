@@ -9,4 +9,5 @@ public interface IPostService {
     Page<Post> getNewFeed(Pageable pageable);
     Page<Post> getWall(Long userId, Pageable pageable);
     Post createPost(Long ownerId, CreatePostRequest request);
+    void deletePost(Long userId, Long postId);
 }
