@@ -148,6 +148,16 @@
           <version>${spring-boot.version}</version>
           <!-- con nào là Spring Boot app thì thêm plugin này (không cần version) -->
         </plugin>
+
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-compiler-plugin</artifactId>
+          <configuration>
+            <compilerArgs>
+              <arg>-parameters</arg>
+            </compilerArgs>
+          </configuration>
+        </plugin>
       </plugins>
     </pluginManagement>
   </build>

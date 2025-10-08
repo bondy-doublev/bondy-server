@@ -1,6 +1,6 @@
 package org.example.authservice.repository;
 
-import org.example.authservice.dto.UpdateUserDto;
+import org.example.authservice.dto.response.UserBasicResponse;
 import org.example.authservice.entity.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
@@ -13,8 +13,24 @@ import java.util.Optional;
 
 @Repository
 public interface UserRepository extends JpaRepository<User, Long> {
-    @Modifying(clearAutomatically = true, flushAutomatically = true)
-    @Query("UPDATE User u SET u.avatarUrl = :avatarUrl WHERE u.id = :id")
-    int updateAvatarUrlById(@Param("id") Long id, @Param("avatarUrl") String avatarUrl);
-    Optional<User> findByEmail(String email);
+  @Modifying(clearAutomatically = true, flushAutomatically = true)
+  @Query("UPDATE User u SET u.avatarUrl = :avatarUrl WHERE u.id = :id")
+  int updateAvatarUrlById(@Param("id") Long id, @Param("avatarUrl") String avatarUrl);
+
+  Optional<User> findByEmail(String email);
+
+  @Query("""
+        SELECT new org.example.authservice.dto.response.UserBasicResponse(
+            u.id,
+            CONCAT(
+                COALESCE(u.firstName, ''),
+                CASE WHEN u.lastName IS NOT NULL AND u.lastName <> '' THEN CONCAT(' ', u.lastName) ELSE '' END,
+                CASE WHEN u.middleName IS NOT NULL AND u.middleName <> '' THEN CONCAT(' ', u.middleName) ELSE '' END
+            ),
+            u.avatarUrl
+        )
+        FROM User u
+        WHERE u.id IN :userIds
+    """)
+  List<UserBasicResponse> findBasicProfilesByIds(@Param("userIds") List<Long> userIds);
 }

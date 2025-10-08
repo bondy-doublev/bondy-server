@@ -6,6 +6,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import org.example.authservice.client.UploadClient;
 import org.example.authservice.dto.UpdateUserDto;
+import org.example.authservice.dto.response.UserBasicResponse;
 import org.example.authservice.entity.User;
 import org.example.authservice.repository.UserRepository;
 import org.example.authservice.service.interfaces.IUserService;
@@ -13,6 +14,8 @@ import org.example.commonweb.enums.ErrorCode;
 import org.example.commonweb.exception.AppException;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
+
+import java.util.List;
 
 @Service
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
@@ -72,5 +75,10 @@ public class UserService implements IUserService {
     if (dto.getGender() != null) user.setGender(dto.getGender());
 
     return userRepository.save(user);
+  }
+
+  @Override
+  public List<UserBasicResponse> getBasicProfile(List<Long> userIds) {
+    return userRepository.findBasicProfilesByIds(userIds);
   }
 }

@@ -7,6 +7,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import org.example.authservice.config.security.ContextUser;
 import org.example.authservice.dto.UpdateUserDto;
+import org.example.authservice.dto.request.BasicProfileRequest;
+import org.example.authservice.dto.response.UserBasicResponse;
 import org.example.authservice.entity.User;
 import org.example.authservice.service.interfaces.IUserService;
 import org.example.commonweb.DTO.core.AppApiResponse;
@@ -14,6 +16,7 @@ import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.List;
 import java.util.Map;
 
 @Tag(name = "User")
@@ -43,5 +46,12 @@ public class UserController {
     User user = userService.updateProfile(ContextUser.get().getUserId(), dto);
 
     return new AppApiResponse(user);
+  }
+
+  @PostMapping("/basic-profiles")
+  AppApiResponse getBasicProfile(@RequestBody @Valid BasicProfileRequest request) {
+    List<UserBasicResponse> users = userService.getBasicProfile(request.getUserIds());
+
+    return new AppApiResponse(users);
   }
 }
