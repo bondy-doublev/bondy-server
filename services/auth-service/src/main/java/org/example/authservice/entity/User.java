@@ -21,39 +21,39 @@ import java.util.Set;
 @NoArgsConstructor
 @AllArgsConstructor
 public class User extends BaseEntityWithUpdate {
-    String email;
+  String email;
 
-    @Column(name = "first_name")
-    String firstName;
+  @Column(name = "first_name")
+  String firstName;
 
-    @Column(name = "middle_name")
-    String middleName;
+  @Column(name = "middle_name")
+  String middleName;
 
-    @Column(name = "last_name")
-    String lastName;
+  @Column(name = "last_name")
+  String lastName;
 
-    @Column(name = "avatar_url")
-    String avatarUrl;
+  @Column(name = "avatar_url")
+  String avatarUrl;
 
-    LocalDateTime dob;
-    Boolean gender;
+  LocalDateTime dob;
+  Boolean gender;
 
-    @JsonIgnore
-    String role;
+  //  @JsonIgnore
+  String role;
 
-    @JsonIgnore
-    Boolean active;
+  //    @JsonIgnore
+  Boolean active;
 
-    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
-    @ToString.Exclude
-    @JsonIgnore
-    private Set<Account> accounts = new HashSet<>();
+  @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+  @ToString.Exclude
+  @JsonIgnore
+  private Set<Account> accounts = new HashSet<>();
 
-    public void addAccount(Account account) {
-        if (accounts == null) {
-            accounts = new HashSet<>();
-        }
-        accounts.add(account);
-        account.setUser(this);
+  public void addAccount(Account account) {
+    if (accounts == null) {
+      accounts = new HashSet<>();
     }
+    accounts.add(account);
+    account.setUser(this);
+  }
 }

@@ -1,6 +1,5 @@
 package org.example.authservice.repository;
 
-import org.example.authservice.dto.UpdateUserDto;
 import org.example.authservice.entity.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
@@ -13,8 +12,11 @@ import java.util.Optional;
 
 @Repository
 public interface UserRepository extends JpaRepository<User, Long> {
-    @Modifying(clearAutomatically = true, flushAutomatically = true)
-    @Query("UPDATE User u SET u.avatarUrl = :avatarUrl WHERE u.id = :id")
-    int updateAvatarUrlById(@Param("id") Long id, @Param("avatarUrl") String avatarUrl);
-    Optional<User> findByEmail(String email);
+  @Modifying(clearAutomatically = true, flushAutomatically = true)
+  @Query("UPDATE User u SET u.avatarUrl = :avatarUrl WHERE u.id = :id")
+  int updateAvatarUrlById(@Param("id") Long id, @Param("avatarUrl") String avatarUrl);
+
+  Optional<User> findByEmail(String email);
+
+  List<User> findByEmailContainingIgnoreCase(String email);
 }
