@@ -6,6 +6,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import org.example.authservice.client.UploadClient;
 import org.example.authservice.dto.UpdateUserDto;
+import org.example.authservice.dto.response.UserBasicResponse;
 import org.example.authservice.entity.User;
 import org.example.authservice.repository.UserRepository;
 import org.example.authservice.service.interfaces.IUserService;

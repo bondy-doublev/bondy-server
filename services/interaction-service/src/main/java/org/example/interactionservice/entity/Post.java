@@ -4,6 +4,10 @@ import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
+import org.example.interactionservice.dto.response.MediaAttachmentResponse;
+import org.example.interactionservice.dto.response.PostDetailResponse;
+import org.example.interactionservice.dto.response.PostResponse;
+import org.example.interactionservice.dto.response.UserBasicResponse;
 import org.example.interactionservice.entity.Base.BaseEntityWithUpdate;
 import org.hibernate.annotations.DynamicInsert;
 
@@ -20,26 +24,94 @@ import java.util.Set;
 @NoArgsConstructor
 @AllArgsConstructor
 public class Post extends BaseEntityWithUpdate {
-    @Column(name = "user_id")
-    Long userId;
+  @Column(name = "user_id")
+  Long userId;
 
-    @Column(name = "content_text")
-    String contentText;
+  @Column(name = "content_text")
+  String contentText;
 
-    @Column(name = "media_count")
-    Integer mediaCount;
-    Boolean visibility = true;
+  @Column(name = "media_count")
+  Integer mediaCount;
+  Boolean visibility = true;
 
-    @OneToMany(mappedBy = "post", cascade = CascadeType.ALL, orphanRemoval = true)
-    @ToString.Exclude
-    @JsonManagedReference
-    Set<MediaAttachment> mediaAttachments = new HashSet<>();
+  @Column(name = "reaction_count")
+  Long reactionCount;
 
-    @OneToMany(mappedBy = "post", cascade = CascadeType.ALL, orphanRemoval = true)
-    @ToString.Exclude
-    Set<Reaction> reactions = new HashSet<>();
+  @Column(name = "comment_count")
+  Long commentCount;
 
-    @OneToMany(mappedBy = "post", cascade = CascadeType.ALL, orphanRemoval = true)
-    @ToString.Exclude
-    Set<Share> shares = new HashSet<>();
+  @Column(name = "share_count")
+  Long shareCount;
+
+  @Builder.Default
+  @OneToMany(mappedBy = "post", cascade = CascadeType.ALL, orphanRemoval = true)
+  @ToString.Exclude
+  @JsonManagedReference
+  Set<MediaAttachment> mediaAttachments = new HashSet<>();
+
+  @Builder.Default
+  @OneToMany(mappedBy = "post", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+  @ToString.Exclude
+  Set<Reaction> reactions = new HashSet<>();
+
+  @Builder.Default
+  @OneToMany(mappedBy = "post", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+  @ToString.Exclude
+  Set<Share> shares = new HashSet<>();
+
+  @Builder.Default
+  @OneToMany(mappedBy = "post", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+  @ToString.Exclude
+  Set<Comment> comments = new HashSet<>();
+
+  public PostResponse toPostResponse(UserBasicResponse owner) {
+    return PostResponse.builder()
+      .id(this.getId())
+      .contentText(this.getContentText())
+      .mediaCount(this.getMediaCount())
+      .visibility(this.getVisibility())
+      .reactionCount(this.getReactionCount())
+      .commentCount(this.getCommentCount())
+      .shareCount(this.getShareCount())
+      .createdAt(this.getCreatedAt())
+      .updatedAt(this.getUpdatedAt())
+      .mediaAttachments(
+        this.getMediaAttachments()
+          .stream()
+          .map(media -> MediaAttachmentResponse.builder()
+            .id(media.getId())
+            .url(media.getUrl())
+            .type(media.getType())
+            .build())
+          .toList()
+      )
+      .owner(owner)
+      .build();
+  }
+
+  public PostDetailResponse toPostDetailResponse() {
+    return PostDetailResponse.builder()
+      .id(this.getId())
+      .userId(this.getUserId())
+      .contentText(this.getContentText())
+      .mediaCount(this.getMediaCount())
+      .visibility(this.getVisibility())
+      .reactionCount(this.getReactionCount())
+      .commentCount(this.getCommentCount())
+      .shareCount(this.getShareCount())
+      .createdAt(this.getCreatedAt())
+      .updatedAt(this.getUpdatedAt())
+      .mediaAttachments(
+        this.getMediaAttachments()
+          .stream()
+          .map(media -> MediaAttachmentResponse.builder()
+            .id(media.getId())
+            .url(media.getUrl())
+            .type(media.getType())
+            .build())
+          .toList()
+      )
+      .build();
+  }
+
 }

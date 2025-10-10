@@ -1,6 +1,7 @@
 package org.example.authservice.service.interfaces;
 
 import org.example.authservice.dto.UpdateUserDto;
+import org.example.authservice.dto.response.UserBasicResponse;
 import org.example.authservice.entity.User;
 import org.springframework.web.multipart.MultipartFile;
 

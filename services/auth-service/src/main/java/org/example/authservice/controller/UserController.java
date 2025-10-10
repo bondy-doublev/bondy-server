@@ -7,6 +7,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import org.example.authservice.config.security.ContextUser;
 import org.example.authservice.dto.UpdateUserDto;
+import org.example.authservice.dto.request.BasicProfileRequest;
+import org.example.authservice.dto.response.UserBasicResponse;
 import org.example.authservice.entity.User;
 import org.example.authservice.service.interfaces.IUserService;
 import org.example.commonweb.DTO.core.AppApiResponse;

@@ -1,6 +1,7 @@
 package org.example.interactionservice.controller;
 
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -8,16 +9,14 @@ import org.example.commonweb.DTO.core.AppApiResponse;
 import org.example.interactionservice.config.security.ContextUser;
 import org.example.interactionservice.dto.PageRequestDto;
 import org.example.interactionservice.dto.request.CreatePostRequest;
-import org.example.interactionservice.entity.Post;
+import org.example.interactionservice.dto.response.PostResponse;
 import org.example.interactionservice.service.interfaces.IPostService;
 import org.springframework.data.domain.Page;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.util.Arrays;
 import java.util.List;
-import java.util.stream.Collectors;
 
 @Tag(name = "Post")
 @RestController
@@ -28,15 +27,15 @@ public class PostController {
   IPostService postService;
 
   @GetMapping("/new-feed")
-  AppApiResponse getPosts(PageRequestDto dto) {
-    Page<Post> posts = postService.getNewFeed(dto.toPageable());
+  AppApiResponse getPosts(@ModelAttribute @Valid PageRequestDto dto) {
+    Page<PostResponse> posts = postService.getNewFeed(dto.toPageable());
 
     return new AppApiResponse(posts);
   }
 
   @GetMapping("/wall")
-  AppApiResponse getWall(PageRequestDto dto) {
-    Page<Post> posts = postService.getWall(ContextUser.get().getUserId(), dto.toPageable());
+  AppApiResponse getWall(@ModelAttribute @Valid PageRequestDto dto) {
+    Page<PostResponse> posts = postService.getWall(ContextUser.get().getUserId(), dto.toPageable());
 
     return new AppApiResponse(posts);
   }
@@ -52,10 +51,7 @@ public class PostController {
     request.setTagUserIds(tagUserIds);
     request.setMediaFiles(mediaFiles);
 
-    Post newPost = postService.createPost(ContextUser.get().getUserId(), request);
+    PostResponse newPost = postService.createPost(ContextUser.get().getUserId(), request);
     return new AppApiResponse(newPost);
-  }
-
-    return new ApiResponse();
   }
 }
