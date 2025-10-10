@@ -12,14 +12,16 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class UpdateUserDto {
-    @NullOrNotBlank(message = "First name must not be empty string")
-    String firstName;
+  @NullOrNotBlank(message = "First name must not be empty string")
+  String firstName;
 
-    @NullOrNotBlank(message = "Middle name must not be empty string")
-    String middleName;
+  @NullOrNotBlank(message = "Middle name must not be empty string")
+  String middleName;
 
-    @NullOrNotBlank(message = "Last name must not be empty string")
-    String lastName;
-    LocalDateTime dob;
-    Boolean gender;
+  String avatarUrl;
+
+  @NullOrNotBlank(message = "Last name must not be empty string")
+  String lastName;
+  LocalDateTime dob;
+  Boolean gender;
 }

@@ -49,4 +49,5 @@ public interface UserRepository extends JpaRepository<User, Long> {
     """)
   Optional<UserBasicResponse> findBasicProfileById(@Param("userId") Long userId);
 
+  List<User> findByEmailContainingIgnoreCase(String email);
 }

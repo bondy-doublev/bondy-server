@@ -305,6 +305,7 @@ public class AuthService implements IAuthService {
   public MessageResponse resetPassword(ResetPasswordRequest request) {
     User user = userRepo.findByEmail(request.getEmail())
       .orElseThrow(() -> new AppException(ErrorCode.BAD_REQUEST, "User not found"));
+    System.out.println("User" + user.getEmail());
 
     if (!request.getNewPassword().equals(request.getConfirmPassword()))
       throw new AppException(ErrorCode.VALIDATION_ERROR, "Confirm password does not match new password");
@@ -316,6 +317,7 @@ public class AuthService implements IAuthService {
       .filter(acc -> Provider.LOCAL.name().equals(acc.getProvider()))
       .findFirst()
       .orElseThrow(() -> new AppException(ErrorCode.BAD_REQUEST, "Account not exist"));
+    System.out.println("Account" + account.getUser().getEmail());
 
     String passwordHash = passwordEncoder.encode(request.getNewPassword());
 
