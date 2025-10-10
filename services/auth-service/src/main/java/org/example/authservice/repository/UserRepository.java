@@ -33,4 +33,20 @@ public interface UserRepository extends JpaRepository<User, Long> {
         WHERE u.id IN :userIds
     """)
   List<UserBasicResponse> findBasicProfilesByIds(@Param("userIds") List<Long> userIds);
+
+  @Query("""
+        SELECT new org.example.authservice.dto.response.UserBasicResponse(
+            u.id,
+            CONCAT(
+                COALESCE(u.firstName, ''),
+                CASE WHEN u.lastName IS NOT NULL AND u.lastName <> '' THEN CONCAT(' ', u.lastName) ELSE '' END,
+                CASE WHEN u.middleName IS NOT NULL AND u.middleName <> '' THEN CONCAT(' ', u.middleName) ELSE '' END
+            ),
+            u.avatarUrl
+        )
+        FROM User u
+        WHERE u.id = :userId
+    """)
+  Optional<UserBasicResponse> findBasicProfileById(@Param("userId") Long userId);
+
 }

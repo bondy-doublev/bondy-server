@@ -78,7 +78,13 @@ public class UserService implements IUserService {
   }
 
   @Override
-  public List<UserBasicResponse> getBasicProfile(List<Long> userIds) {
+  public List<UserBasicResponse> getBasicProfiles(List<Long> userIds) {
     return userRepository.findBasicProfilesByIds(userIds);
+  }
+
+  @Override
+  public UserBasicResponse getBasicProfile(Long userId) {
+    return userRepository.findBasicProfileById(userId)
+      .orElseThrow(() -> new AppException(ErrorCode.ENTITY_NOT_FOUND, "User with " + userId + " not found"));
   }
 }

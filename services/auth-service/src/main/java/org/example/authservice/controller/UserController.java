@@ -48,9 +48,16 @@ public class UserController {
     return new AppApiResponse(user);
   }
 
+  @GetMapping("/{userId}/basic-profile")
+  AppApiResponse getBasicProfile(@PathVariable Long userId) {
+    UserBasicResponse user = userService.getBasicProfile(userId);
+
+    return new AppApiResponse(user);
+  }
+
   @PostMapping("/basic-profiles")
-  AppApiResponse getBasicProfile(@RequestBody @Valid BasicProfileRequest request) {
-    List<UserBasicResponse> users = userService.getBasicProfile(request.getUserIds());
+  AppApiResponse getBasicProfiles(@RequestBody @Valid BasicProfileRequest request) {
+    List<UserBasicResponse> users = userService.getBasicProfiles(request.getUserIds());
 
     return new AppApiResponse(users);
   }
