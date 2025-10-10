@@ -1,8 +1,6 @@
 package org.example.interactionservice.entity;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 import org.example.interactionservice.entity.Base.BaseEntity;
@@ -14,22 +12,33 @@ import java.time.LocalDateTime;
 @Data
 @Builder
 @Entity
-@Table(name = "friendships")
+@Table(name = "friendships",
+  uniqueConstraints = {@UniqueConstraint(columnNames = {"user_id", "friend_id"})})
 @DynamicInsert
 @FieldDefaults(level = AccessLevel.PRIVATE)
 @NoArgsConstructor
 @AllArgsConstructor
 public class Friendship extends BaseEntity {
-    @Column(name = "user_id")
-    Long userId;
 
-    @Column(name = "friend_id")
-    Long friendId;
-    String status;
+  public enum Status {
+    PENDING,
+    ACCEPTED,
+    REJECTED
+  }
 
-    @Column(name = "requested_at")
-    LocalDateTime requestedAt;
+  @Column(name = "user_id", nullable = false)
+  Long userId; // Người gửi request
 
-    @Column(name = "responded_at")
-    LocalDateTime respondedAt;
+  @Column(name = "friend_id", nullable = false)
+  Long friendId; // Người nhận request
+
+  @Enumerated(EnumType.STRING)
+  @Column(nullable = false)
+  Status status;
+
+  @Column(name = "requested_at", nullable = false)
+  LocalDateTime requestedAt;
+
+  @Column(name = "responded_at")
+  LocalDateTime respondedAt;
 }

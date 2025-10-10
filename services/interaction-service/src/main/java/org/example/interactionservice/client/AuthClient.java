@@ -8,6 +8,7 @@ import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.util.UriComponentsBuilder;
 
 import java.util.HashMap;
 import java.util.List;
@@ -57,6 +58,23 @@ public class AuthClient {
         })
         .block())
       .getData();
+  }
+
+  public List<UserBasicResponse> getAllBasicProfiles(int page) {
+    UriComponentsBuilder uriBuilder = UriComponentsBuilder
+      .fromUriString(gatewayUrl + "/api/v1/users/all-basic-profiles")
+      .queryParam("page", page);
+
+    AppApiResponse<List<UserBasicResponse>> response = webClientBuilder.build()
+      .get()
+      .uri(uriBuilder.toUriString())
+      .header(apiKeyHeader, apiKeyValue)
+      .retrieve()
+      .bodyToMono(new ParameterizedTypeReference<AppApiResponse<List<UserBasicResponse>>>() {
+      })
+      .block();
+
+    return Objects.requireNonNull(response).getData();
   }
 
   @lombok.Data

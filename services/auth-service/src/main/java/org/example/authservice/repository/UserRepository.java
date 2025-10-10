@@ -2,7 +2,10 @@ package org.example.authservice.repository;
 
 import org.example.authservice.dto.response.UserBasicResponse;
 import org.example.authservice.entity.User;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -12,7 +15,7 @@ import java.util.List;
 import java.util.Optional;
 
 @Repository
-public interface UserRepository extends JpaRepository<User, Long> {
+public interface UserRepository extends JpaRepository<User, Long>, JpaSpecificationExecutor<User> {
   @Modifying(clearAutomatically = true, flushAutomatically = true)
   @Query("UPDATE User u SET u.avatarUrl = :avatarUrl WHERE u.id = :id")
   int updateAvatarUrlById(@Param("id") Long id, @Param("avatarUrl") String avatarUrl);
@@ -50,4 +53,18 @@ public interface UserRepository extends JpaRepository<User, Long> {
   Optional<UserBasicResponse> findBasicProfileById(@Param("userId") Long userId);
 
   List<User> findByEmailContainingIgnoreCase(String email);
+
+  @Query("""
+        SELECT new org.example.authservice.dto.response.UserBasicResponse(
+            u.id,
+            CONCAT(
+                COALESCE(u.firstName, ''),
+                CASE WHEN u.lastName IS NOT NULL AND u.lastName <> '' THEN CONCAT(' ', u.lastName) ELSE '' END,
+                CASE WHEN u.middleName IS NOT NULL AND u.middleName <> '' THEN CONCAT(' ', u.middleName) ELSE '' END
+            ),
+            u.avatarUrl
+        )
+        FROM User u
+    """)
+  Page<UserBasicResponse> findAllBasicProfiles(Pageable pageable);
 }

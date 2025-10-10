@@ -12,6 +12,10 @@ import org.example.authservice.repository.UserRepository;
 import org.example.authservice.service.interfaces.IUserService;
 import org.example.commonweb.enums.ErrorCode;
 import org.example.commonweb.exception.AppException;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -28,6 +32,22 @@ public class UserService implements IUserService {
   public User getProfile(Long userId) {
     return userRepository.findById(userId)
       .orElseThrow(() -> new AppException(ErrorCode.ENTITY_NOT_FOUND, "Profile not found"));
+  }
+
+  public List<User> searchUsers(String address, String name) {
+    Specification<User> spec = Specification.where(null);
+
+    if (address != null && !address.isEmpty()) {
+      spec = spec.and((root, query, cb) -> cb.equal(root.get("address"), address));
+    }
+
+    if (name != null && !name.isEmpty()) {
+      spec = spec.and((root, query, cb) -> cb.like(cb.lower(root.get("firstName")), "%" + name.toLowerCase() + "%"));
+    }
+
+    // có thể add nhiều filter khác vào spec tương tự
+
+    return userRepository.findAll(spec);
   }
 
   @Override
@@ -82,6 +102,11 @@ public class UserService implements IUserService {
     return userRepository.findBasicProfilesByIds(userIds);
   }
 
+  public Page<UserBasicResponse> getAllBasicProfiles(int page) {
+    Pageable pageable = PageRequest.of(page, 15); // 15 user / page
+    return userRepository.findAllBasicProfiles(pageable);
+  }
+
   public List<User> getAllUsers() {
     return userRepository.findAll();
   }
@@ -89,7 +114,7 @@ public class UserService implements IUserService {
   public List<User> findByEmailContainingIgnoreCase(String email) {
     return userRepository.findByEmailContainingIgnoreCase(email);
   }
-  
+
   @Override
   public User editUser(Long userId, UpdateUserDto dto) {
     User user = userRepository.findById(userId)
