@@ -1,5 +1,6 @@
 package org.example.interactionservice.exception;
 
+import jakarta.persistence.PersistenceException;
 import org.example.commonweb.DTO.core.AppApiResponse;
 import org.example.commonweb.DTO.core.AppErrorResponse;
 import org.example.commonweb.enums.ErrorCode;
@@ -90,4 +91,29 @@ public class GlobalExceptionHandler {
     return ResponseEntity.status(errorCode.getCode()).body(response);
   }
 
+  @ExceptionHandler(PersistenceException.class)
+  public ResponseEntity<AppApiResponse> handlePersistenceException(PersistenceException ex) {
+    ErrorCode errorCode = ErrorCode.INTERNAL_ERROR;
+
+    String message = ex.getMessage() != null ? ex.getMessage() : "Database operation failed";
+
+    if (ex.getCause() != null && ex.getCause().getMessage() != null) {
+      String cause = ex.getCause().getMessage().toLowerCase();
+      if (cause.contains("constraint")) {
+        message = "Database constraint violated";
+      } else if (cause.contains("duplicate")) {
+        message = "Duplicate entry detected";
+      }
+    }
+
+    AppApiResponse response = AppApiResponse.builder()
+      .code(errorCode.getCode())
+      .data(AppErrorResponse.builder()
+        .type(errorCode.name())
+        .message(message)
+        .build())
+      .build();
+
+    return ResponseEntity.status(errorCode.getCode()).body(response);
+  }
 }

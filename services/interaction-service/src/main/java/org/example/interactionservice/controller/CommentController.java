@@ -1,25 +1,29 @@
 package org.example.interactionservice.controller;
 
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import org.example.commonweb.DTO.core.AppApiResponse;
+import org.example.interactionservice.dto.request.CreateCommentRequest;
 import org.springframework.web.bind.annotation.*;
 
 @Tag(name = "Comment")
 @RestController
-@RequestMapping
+@RequestMapping("/posts")
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class CommentController {
-  @PostMapping("/posts/{postId}/comments")
-  AppApiResponse createComment(@PathVariable String postId) {
+  @PostMapping("/{postId}/comments")
+  AppApiResponse createComment(
+    @PathVariable Long postId,
+    @RequestBody @Valid CreateCommentRequest request) {
     return new AppApiResponse();
   }
 
-  @GetMapping("/posts/{postId}/comments")
-  AppApiResponse getComments(@PathVariable String postId) {
+  @GetMapping("/{postId}/comments")
+  AppApiResponse getComments(@PathVariable Long postId) {
     return new AppApiResponse();
   }
 }

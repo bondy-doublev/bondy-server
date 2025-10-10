@@ -78,6 +78,10 @@ public class UserService implements IUserService {
   }
 
   @Override
+  public List<UserBasicResponse> getBasicProfiles(List<Long> userIds) {
+    return userRepository.findBasicProfilesByIds(userIds);
+  }
+
   public List<User> getAllUsers() {
     return userRepository.findAll();
   }
@@ -85,8 +89,7 @@ public class UserService implements IUserService {
   public List<User> findByEmailContainingIgnoreCase(String email) {
     return userRepository.findByEmailContainingIgnoreCase(email);
   }
-
-
+  
   @Override
   public User editUser(Long userId, UpdateUserDto dto) {
     User user = userRepository.findById(userId)
@@ -122,5 +125,11 @@ public class UserService implements IUserService {
     } catch (Exception e) {
       throw new AppException(ErrorCode.INTERNAL_ERROR, "Failed to delete user: " + e.getMessage());
     }
+  }
+
+  @Override
+  public UserBasicResponse getBasicProfile(Long userId) {
+    return userRepository.findBasicProfileById(userId)
+      .orElseThrow(() -> new AppException(ErrorCode.ENTITY_NOT_FOUND, "User with " + userId + " not found"));
   }
 }

@@ -47,6 +47,18 @@ public class AuthClient {
 
   }
 
+  public UserBasicResponse getBasicProfile(Long userId) {
+    return Objects.requireNonNull(webClientBuilder.build()
+        .get()
+        .uri(gatewayUrl + "/api/v1/users/" + userId + "/basic-profile")
+        .header(apiKeyHeader, apiKeyValue)
+        .retrieve()
+        .bodyToMono(new ParameterizedTypeReference<AppApiResponse<UserBasicResponse>>() {
+        })
+        .block())
+      .getData();
+  }
+
   @lombok.Data
   private static class AppApiResponse<T> {
     boolean success;

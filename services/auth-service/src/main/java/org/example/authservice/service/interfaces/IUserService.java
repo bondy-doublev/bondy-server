@@ -16,6 +16,10 @@ public interface IUserService {
 
   User updateProfile(Long userId, UpdateUserDto user);
 
+  List<UserBasicResponse> getBasicProfiles(List<Long> userIds);
+
+  UserBasicResponse getBasicProfile(Long userId);
+
   List<User> getAllUsers();
 
   User editUser(Long userId, UpdateUserDto dto);
