@@ -12,6 +12,7 @@ import org.example.authservice.dto.response.UserBasicResponse;
 import org.example.authservice.entity.User;
 import org.example.authservice.service.interfaces.IUserService;
 import org.example.commonweb.DTO.core.AppApiResponse;
+import org.springframework.data.domain.Page;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -62,6 +63,13 @@ public class UserController {
     return new AppApiResponse(users);
   }
 
+  @GetMapping("/all-basic-profiles")
+  public AppApiResponse getAllBasicProfiles(@RequestParam(defaultValue = "0") int page) {
+    Page<UserBasicResponse> usersPage = userService.getAllBasicProfiles(page);
+    List<UserBasicResponse> users = usersPage.getContent(); // chỉ lấy list
+    return new AppApiResponse(users); // trả về list như JSON mẫu
+  }
+
   @GetMapping
   public AppApiResponse getAllUsers(@RequestParam(name = "email", required = false) String email) {
     List<User> users;
@@ -96,5 +104,14 @@ public class UserController {
       "message", "User deleted successfully",
       "userId", id
     ));
+  }
+
+  @GetMapping("/search")
+  public AppApiResponse searchUsers(
+    @RequestParam(required = false) String address,
+    @RequestParam(required = false) String name
+  ) {
+    List<User> users = userService.searchUsers(address, name);
+    return new AppApiResponse(users);
   }
 }
