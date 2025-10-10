@@ -10,9 +10,17 @@ import java.util.List;
 public interface IUserService {
   User getProfile(Long userId);
 
+  List<User> findByEmailContainingIgnoreCase(String email);
+
   String uploadAvatar(MultipartFile file, Long userId);
 
   User updateProfile(Long userId, UpdateUserDto user);
 
-  List<UserBasicResponse> getBasicProfile(List<Long> userIds);
+  List<User> getAllUsers();
+
+  User editUser(Long userId, UpdateUserDto dto);
+
+  User toggleStatus(Long userId);
+
+  void deleteUser(Long userId);
 }

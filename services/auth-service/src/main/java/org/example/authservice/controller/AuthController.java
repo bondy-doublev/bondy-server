@@ -31,6 +31,7 @@ public class AuthController {
   AppApiResponse login(@RequestBody @Valid LoginRequest request,
                        HttpServletResponse response) {
     AuthResponse authResponse = authService.login(request);
+    System.out.println("Login");
 
     RefreshTokenDto token = authResponse.getRefreshToken();
 
