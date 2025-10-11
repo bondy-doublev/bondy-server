@@ -40,7 +40,7 @@ public class User extends BaseEntityWithUpdate {
 
   //  @JsonIgnore
   String role;
-
+  
   //    @JsonIgnore
   Boolean active;
 
