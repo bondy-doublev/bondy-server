@@ -22,6 +22,7 @@ public class GlobalExceptionHandler {
     ErrorCode errorCode = exception.getErrorCode();
 
     AppApiResponse response = AppApiResponse.builder()
+      .success(false)
       .code(errorCode.getCode())
       .data(AppErrorResponse.builder()
         .type(errorCode.name())
@@ -43,6 +44,7 @@ public class GlobalExceptionHandler {
     ErrorCode errorCode = ErrorCode.VALIDATION_ERROR;
 
     AppApiResponse response = AppApiResponse.builder()
+      .success(false)
       .code(errorCode.getCode())
       .data(AppErrorResponse.builder()
         .type(errorCode.name())
@@ -64,6 +66,7 @@ public class GlobalExceptionHandler {
     String message = ex.getMessage();
 
     AppApiResponse response = AppApiResponse.builder()
+      .success(false)
       .code(errorCode.getCode())
       .data(AppErrorResponse.builder()
         .type(errorCode.name())
@@ -81,6 +84,7 @@ public class GlobalExceptionHandler {
     String message = ex.getMessage() != null ? ex.getMessage() : "Unsupported media type";
 
     AppApiResponse response = AppApiResponse.builder()
+      .success(false)
       .code(errorCode.getCode())
       .data(AppErrorResponse.builder()
         .type(errorCode.name())
@@ -107,6 +111,27 @@ public class GlobalExceptionHandler {
     }
 
     AppApiResponse response = AppApiResponse.builder()
+      .success(false)
+      .code(errorCode.getCode())
+      .data(AppErrorResponse.builder()
+        .type(errorCode.name())
+        .message(message)
+        .build())
+      .build();
+
+    return ResponseEntity.status(errorCode.getCode()).body(response);
+  }
+
+  @ExceptionHandler(IllegalArgumentException.class)
+  public ResponseEntity<AppApiResponse> handleIllegalArgumentException(IllegalArgumentException ex) {
+    ErrorCode errorCode = ErrorCode.BAD_REQUEST;
+
+    String message = ex.getMessage() != null
+      ? ex.getMessage()
+      : "Invalid argument provided";
+
+    AppApiResponse response = AppApiResponse.builder()
+      .success(false)
       .code(errorCode.getCode())
       .data(AppErrorResponse.builder()
         .type(errorCode.name())

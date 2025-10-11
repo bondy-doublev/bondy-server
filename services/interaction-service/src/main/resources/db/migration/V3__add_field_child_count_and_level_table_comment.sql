@@ -1,0 +1,4 @@
+ALTER TABLE Comments
+    ADD COLUMN child_count BIGINT NOT NULL DEFAULT 0,
+  ADD COLUMN "level" INT NOT NULL DEFAULT 1,
+  ADD CONSTRAINT chk_comment_level CHECK ("level" BETWEEN 1 AND 3);

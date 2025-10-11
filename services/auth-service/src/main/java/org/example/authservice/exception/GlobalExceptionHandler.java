@@ -20,6 +20,7 @@ public class GlobalExceptionHandler {
     ErrorCode errorCode = exception.getErrorCode();
 
     AppApiResponse response = AppApiResponse.builder()
+      .success(false)
       .code(errorCode.getCode())
       .data(AppErrorResponse.builder()
         .type(errorCode.name())
@@ -41,6 +42,7 @@ public class GlobalExceptionHandler {
     ErrorCode errorCode = ErrorCode.VALIDATION_ERROR;
 
     AppApiResponse response = AppApiResponse.builder()
+      .success(false)
       .code(errorCode.getCode())
       .data(AppErrorResponse.builder()
         .type(errorCode.name())
@@ -62,6 +64,7 @@ public class GlobalExceptionHandler {
     String message = ex.getMessage();
 
     AppApiResponse response = AppApiResponse.builder()
+      .success(false)
       .code(errorCode.getCode())
       .data(AppErrorResponse.builder()
         .type(errorCode.name())

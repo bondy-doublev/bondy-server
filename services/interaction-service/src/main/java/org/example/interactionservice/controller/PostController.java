@@ -27,15 +27,15 @@ public class PostController {
   IPostService postService;
 
   @GetMapping("/new-feed")
-  AppApiResponse getPosts(@ModelAttribute @Valid PageRequestDto dto) {
-    Page<PostResponse> posts = postService.getNewFeed(dto.toPageable());
+  AppApiResponse getPosts(@ModelAttribute @Valid PageRequestDto filter) {
+    Page<PostResponse> posts = postService.getNewFeed(filter.toPageable());
 
     return new AppApiResponse(posts);
   }
 
   @GetMapping("/wall")
-  AppApiResponse getWall(@ModelAttribute @Valid PageRequestDto dto) {
-    Page<PostResponse> posts = postService.getWall(ContextUser.get().getUserId(), dto.toPageable());
+  AppApiResponse getWall(@ModelAttribute @Valid PageRequestDto filter) {
+    Page<PostResponse> posts = postService.getWall(ContextUser.get().getUserId(), filter.toPageable());
 
     return new AppApiResponse(posts);
   }

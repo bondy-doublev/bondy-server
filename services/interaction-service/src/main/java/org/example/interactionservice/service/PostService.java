@@ -25,10 +25,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -51,14 +48,18 @@ public class PostService implements IPostService {
       .distinct()
       .toList();
 
-    List<UserBasicResponse> users = authClient.getBasicProfiles(userIds);
+    List<PostResponse> responses = new ArrayList<>();
 
-    Map<Long, UserBasicResponse> userMap = users.stream()
-      .collect(Collectors.toMap(UserBasicResponse::getId, u -> u));
+    if (!userIds.isEmpty()) {
+      List<UserBasicResponse> users = authClient.getBasicProfiles(userIds);
 
-    List<PostResponse> responses = posts.stream()
-      .map(post -> post.toPostResponse(userMap.get(post.getUserId())))
-      .toList();
+      Map<Long, UserBasicResponse> userMap = users.stream()
+        .collect(Collectors.toMap(UserBasicResponse::getId, u -> u));
+
+      responses = posts.stream()
+        .map(post -> post.toPostResponse(userMap.get(post.getUserId())))
+        .toList();
+    }
 
     return new PageImpl<>(responses, pageable, posts.getTotalElements());
   }

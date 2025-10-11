@@ -4,6 +4,8 @@ import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jws;
 import io.jsonwebtoken.JwtException;
 import org.example.gateway.property.PropsConfig;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.cloud.gateway.filter.GatewayFilterChain;
 import org.springframework.cloud.gateway.filter.GlobalFilter;
 import org.springframework.core.Ordered;
@@ -21,78 +23,81 @@ import java.util.Objects;
 @Component
 @Order(Ordered.HIGHEST_PRECEDENCE)
 public class JwtFilter implements GlobalFilter {
-    private final JwtService jwtService;
-    private final AntPathMatcher matcher = new AntPathMatcher();
-    private final List<String> publicPaths;
-    private final List<String> internalPaths;
+  private static final Logger log = LoggerFactory.getLogger(JwtFilter.class);
+  private final JwtService jwtService;
+  private final AntPathMatcher matcher = new AntPathMatcher();
+  private final List<String> publicPaths;
+  private final List<String> internalPaths;
 
-    public JwtFilter(JwtService jwtService, PropsConfig props) {
-        this.jwtService = jwtService;
-        this.publicPaths = Objects.requireNonNullElse(props.getJwt().getPublicPaths(), List.of());
-        internalPaths = props.getInternalPaths();
+  public JwtFilter(JwtService jwtService, PropsConfig props) {
+    this.jwtService = jwtService;
+    this.publicPaths = Objects.requireNonNullElse(props.getJwt().getPublicPaths(), List.of());
+    internalPaths = props.getInternalPaths();
+  }
+
+  @Override
+  public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
+    ServerHttpRequest request = exchange.getRequest();
+    String path = request.getPath().value();
+
+    if ("OPTIONS".equalsIgnoreCase(String.valueOf(request.getMethod()))) {
+      return chain.filter(exchange);
     }
 
-    @Override
-    public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
-        ServerHttpRequest request = exchange.getRequest();
-        String path = request.getPath().value();
-
-        if ("OPTIONS".equalsIgnoreCase(String.valueOf(request.getMethod()))) {
-            return chain.filter(exchange);
-        }
-
-        if (isPublic(path) && !path.equals("/api/v1/auth/refresh") || isInternal(path)) {
-            return chain.filter(
-                    exchange.mutate()
-                            .request(r -> r.headers(this::stripSensitiveHeaders))
-                            .build()
-            );
-        }
-
-        String rawAuth = request.getHeaders().getFirst(HttpHeaders.AUTHORIZATION);
-        String token = JwtService.stripBearer(rawAuth);
-        if (token == null) {
-            return FilterUtil.unauthorized(exchange, "Missing Bearer token");
-        }
-
-        final Jws<Claims> jws;
-        try {
-            jws = jwtService.validate(token);
-        } catch (JwtException e) {
-            return FilterUtil.unauthorized(exchange, e.getMessage());
-        }
-
-        Claims claims = jws.getPayload();
-        String userId = claims.getSubject();
-        String role = claims.get("role", String.class);
-        String email = claims.get("email", String.class);
-
-        ServerHttpRequest mutated = request.mutate()
-                .headers(h -> {
-                    stripSensitiveHeaders(h);
-                    if (userId != null) h.add("X-User-Id", userId);
-                    if (role != null)  h.add("X-User-Role", role);
-                    if (email != null) h.add("X-Email", email);
-                    h.add("X-Auth-By", "gateway");
-                })
-                .build();
-
-        return chain.filter(exchange.mutate().request(mutated).build());
+    if (isPublic(path) && !path.equals("/api/v1/auth/refresh") || isInternal(path)) {
+      return chain.filter(
+        exchange.mutate()
+          .request(r -> r.headers(this::stripSensitiveHeaders))
+          .build()
+      );
     }
 
-    private boolean isPublic(String path) {
-        return publicPaths.stream().anyMatch(p -> matcher.match(p, path));
+    String rawAuth = request.getHeaders().getFirst(HttpHeaders.AUTHORIZATION);
+    String token = JwtService.stripBearer(rawAuth);
+    if (token == null) {
+      log.info("Path {}", path);
+
+      return FilterUtil.unauthorized(exchange, "Missing Bearer token");
     }
 
-    private boolean isInternal(String path) {
-        return internalPaths.stream().anyMatch(p -> matcher.match(p, path));
+    final Jws<Claims> jws;
+    try {
+      jws = jwtService.validate(token);
+    } catch (JwtException e) {
+      return FilterUtil.unauthorized(exchange, e.getMessage());
     }
 
-    private void stripSensitiveHeaders(HttpHeaders h) {
-        h.remove("X-User-Id");
-        h.remove("X-User-Role");
-        h.remove("X-User-Roles");
-        h.remove("X-Tenant");
-        h.remove("X-Auth-By");
-    }
+    Claims claims = jws.getPayload();
+    String userId = claims.getSubject();
+    String role = claims.get("role", String.class);
+    String email = claims.get("email", String.class);
+
+    ServerHttpRequest mutated = request.mutate()
+      .headers(h -> {
+        stripSensitiveHeaders(h);
+        if (userId != null) h.add("X-User-Id", userId);
+        if (role != null) h.add("X-User-Role", role);
+        if (email != null) h.add("X-Email", email);
+        h.add("X-Auth-By", "gateway");
+      })
+      .build();
+
+    return chain.filter(exchange.mutate().request(mutated).build());
+  }
+
+  private boolean isPublic(String path) {
+    return publicPaths.stream().anyMatch(p -> matcher.match(p, path));
+  }
+
+  private boolean isInternal(String path) {
+    return internalPaths.stream().anyMatch(p -> matcher.match(p, path));
+  }
+
+  private void stripSensitiveHeaders(HttpHeaders h) {
+    h.remove("X-User-Id");
+    h.remove("X-User-Role");
+    h.remove("X-User-Roles");
+    h.remove("X-Tenant");
+    h.remove("X-Auth-By");
+  }
 }
