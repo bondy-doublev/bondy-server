@@ -9,6 +9,8 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.util.Optional;
+
 @Repository
 public interface CommentRepository extends JpaRepository<Comment, Long> {
   @Query("""
@@ -16,7 +18,6 @@ public interface CommentRepository extends JpaRepository<Comment, Long> {
       WHERE c.post = :post
         AND (:parentId IS NULL AND c.parent IS NULL
              OR :parentId IS NOT NULL AND c.parent.id = :parentId)
-      ORDER BY c.createdAt DESC
     """)
   Page<Comment> findComments(
     @Param("post") Post post,
@@ -24,4 +25,5 @@ public interface CommentRepository extends JpaRepository<Comment, Long> {
     Pageable pageable
   );
 
+  Optional<Comment> findByIdAndPost(Long id, Post post);
 }
