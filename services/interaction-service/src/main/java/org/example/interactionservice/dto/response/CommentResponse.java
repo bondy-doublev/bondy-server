@@ -4,7 +4,6 @@ import lombok.*;
 import lombok.experimental.FieldDefaults;
 
 import java.time.LocalDateTime;
-import java.util.List;
 
 @Data
 @Builder
@@ -16,8 +15,6 @@ public class CommentResponse {
   Long parentId;
   UserBasicResponse user;
   String contentText;
-
-  List<CommentResponse> children;
 
   LocalDateTime createdAt;
   LocalDateTime updatedAt;

@@ -10,9 +10,18 @@ import org.example.interactionservice.dto.response.CommentResponse;
 import org.example.interactionservice.dto.response.UserBasicResponse;
 import org.example.interactionservice.entity.Comment;
 import org.example.interactionservice.entity.Post;
+import org.example.interactionservice.mapper.CommentMapper;
 import org.example.interactionservice.repository.CommentRepository;
 import org.example.interactionservice.service.interfaces.ICommentService;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -24,8 +33,8 @@ public class CommentService implements ICommentService {
   AuthClient authClient;
 
   @Override
-  public CommentResponse createComment(Long userId, CreateCommentRequest request) {
-    Post postRef = entityManager.getReference(Post.class, request.getPostId());
+  public CommentResponse createComment(Long userId, Long postId, CreateCommentRequest request) {
+    Post postRef = entityManager.getReference(Post.class, postId);
     Comment parent = null;
 
     if (request.getParentId() != null) {
@@ -51,5 +60,38 @@ public class CommentService implements ICommentService {
       .createdAt(newComment.getCreatedAt())
       .updatedAt(newComment.getUpdatedAt())
       .build();
+  }
+
+  @Override
+  public Page<CommentResponse> getPostComments(Long postId, Long parentId, Pageable pageable) {
+    Post post = entityManager.getReference(Post.class, postId);
+
+    Page<Comment> comments = commentRepo.findComments(post, parentId, pageable);
+
+    if (comments.isEmpty()) {
+      return new PageImpl<>(List.of(), pageable, 0);
+    }
+
+    List<Long> userIds = comments.stream()
+      .map(Comment::getUserId)
+      .filter(Objects::nonNull)
+      .distinct()
+      .toList();
+
+    Map<Long, UserBasicResponse> userMap;
+
+    if (!userIds.isEmpty()) {
+      List<UserBasicResponse> users = authClient.getBasicProfiles(userIds);
+      userMap = users.stream()
+        .collect(Collectors.toMap(UserBasicResponse::getId, u -> u));
+    } else {
+      userMap = Map.of();
+    }
+
+    List<CommentResponse> responses = comments.stream()
+      .map(c -> CommentMapper.toCommentResponse(c, userMap))
+      .toList();
+
+    return new PageImpl<>(responses, pageable, comments.getTotalElements());
   }
 }
