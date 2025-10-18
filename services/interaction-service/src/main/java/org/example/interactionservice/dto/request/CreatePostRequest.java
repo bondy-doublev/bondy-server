@@ -1,9 +1,9 @@
 package org.example.interactionservice.dto.request;
 
+import jakarta.validation.constraints.Positive;
 import lombok.AccessLevel;
 import lombok.Data;
 import lombok.experimental.FieldDefaults;
-import org.example.interactionservice.validator.MaxSizeFromConfig.MaxSizeFromConfig;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
@@ -11,9 +11,11 @@ import java.util.List;
 @Data
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class CreatePostRequest {
-    String content;
+  String content;
 
-    List<Long> tagUserIds;
+  List<@Positive(message = "User ID must be positive") Long> tagUserIds;
 
-    List<MultipartFile> mediaFiles;
+  List<MultipartFile> mediaFiles;
+
+  Boolean isPublic;
 }

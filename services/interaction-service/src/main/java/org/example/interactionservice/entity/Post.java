@@ -5,13 +5,13 @@ import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 import org.example.interactionservice.dto.response.MediaAttachmentResponse;
-import org.example.interactionservice.dto.response.PostDetailResponse;
 import org.example.interactionservice.dto.response.PostResponse;
 import org.example.interactionservice.dto.response.UserBasicResponse;
 import org.example.interactionservice.entity.Base.BaseEntityWithUpdate;
 import org.hibernate.annotations.DynamicInsert;
 
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 @EqualsAndHashCode(callSuper = true)
@@ -64,7 +64,12 @@ public class Post extends BaseEntityWithUpdate {
   @ToString.Exclude
   Set<Comment> comments = new HashSet<>();
 
-  public PostResponse toPostResponse(UserBasicResponse owner) {
+  @Builder.Default
+  @OneToMany(mappedBy = "post", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+  @ToString.Exclude
+  Set<Mention> tags = new HashSet<>();
+
+  public PostResponse toPostResponse(UserBasicResponse owner, List<UserBasicResponse> taggedUsers) {
     return PostResponse.builder()
       .id(this.getId())
       .contentText(this.getContentText())
@@ -86,32 +91,7 @@ public class Post extends BaseEntityWithUpdate {
           .toList()
       )
       .owner(owner)
+      .taggedUsers(taggedUsers)
       .build();
   }
-
-  public PostDetailResponse toPostDetailResponse() {
-    return PostDetailResponse.builder()
-      .id(this.getId())
-      .userId(this.getUserId())
-      .contentText(this.getContentText())
-      .mediaCount(this.getMediaCount())
-      .visibility(this.getVisibility())
-      .reactionCount(this.getReactionCount())
-      .commentCount(this.getCommentCount())
-      .shareCount(this.getShareCount())
-      .createdAt(this.getCreatedAt())
-      .updatedAt(this.getUpdatedAt())
-      .mediaAttachments(
-        this.getMediaAttachments()
-          .stream()
-          .map(media -> MediaAttachmentResponse.builder()
-            .id(media.getId())
-            .url(media.getUrl())
-            .type(media.getType())
-            .build())
-          .toList()
-      )
-      .build();
-  }
-
 }
