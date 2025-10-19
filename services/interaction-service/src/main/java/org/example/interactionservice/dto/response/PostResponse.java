@@ -22,6 +22,8 @@ public class PostResponse {
   Long commentCount;
   Long shareCount;
 
+  Boolean reacted;
+
   List<MediaAttachmentResponse> mediaAttachments;
   List<UserBasicResponse> taggedUsers;
 

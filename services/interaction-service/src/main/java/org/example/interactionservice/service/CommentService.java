@@ -1,6 +1,7 @@
 package org.example.interactionservice.service;
 
 import jakarta.persistence.EntityManager;
+import jakarta.transaction.Transactional;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -82,6 +83,7 @@ public class CommentService implements ICommentService {
 
     return CommentResponse.builder()
       .id(newComment.getId())
+      .postId(postId)
       .user(user)
       .parentId(parent != null ? parent.getId() : null)
       .contentText(newComment.getContentText())
@@ -123,5 +125,12 @@ public class CommentService implements ICommentService {
       .toList();
 
     return new PageImpl<>(responses, pageable, comments.getTotalElements());
+  }
+
+  @Override
+  @Transactional
+  public void deleteComment(Long userId, Long commentId) {
+    commentRepo.decrementParentChildCount(commentId);
+    commentRepo.decrementPostCommentCount(commentId, userId);
   }
 }

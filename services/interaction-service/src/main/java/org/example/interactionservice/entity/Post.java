@@ -69,7 +69,7 @@ public class Post extends BaseEntityWithUpdate {
   @ToString.Exclude
   Set<Mention> tags = new HashSet<>();
 
-  public PostResponse toPostResponse(UserBasicResponse owner, List<UserBasicResponse> taggedUsers) {
+  public PostResponse toPostResponse(UserBasicResponse owner, List<UserBasicResponse> taggedUsers, Boolean reacted) {
     return PostResponse.builder()
       .id(this.getId())
       .contentText(this.getContentText())
@@ -90,6 +90,7 @@ public class Post extends BaseEntityWithUpdate {
             .build())
           .toList()
       )
+      .reacted(reacted)
       .owner(owner)
       .taggedUsers(taggedUsers)
       .build();

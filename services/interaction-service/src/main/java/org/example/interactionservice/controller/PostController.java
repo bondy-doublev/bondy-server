@@ -39,12 +39,6 @@ public class PostController {
 
   @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
   AppApiResponse createPost(@ModelAttribute CreatePostRequest request) {
-//    CreatePostRequest request = new CreatePostRequest();
-//    request.setContent(content);
-//    request.setTagUserIds(tagUserIds);
-//    request.setIsPublic(isPublic);
-//    request.setMediaFiles(mediaFiles);
-
     PostResponse newPost = postService.createPost(ContextUser.get().getUserId(), request);
     return new AppApiResponse(newPost);
   }

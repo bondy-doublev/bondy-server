@@ -17,13 +17,13 @@ import org.springframework.web.bind.annotation.*;
 
 @Tag(name = "Comment")
 @RestController
-@RequestMapping("/posts")
+@RequestMapping
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class CommentController {
   ICommentService commentService;
 
-  @PostMapping("/{postId}/comments")
+  @PostMapping("/posts/{postId}/comments")
   AppApiResponse createComment(
     @PathVariable @Valid @NotNull(message = "Post ID is required") Long postId,
     @RequestBody @Valid CreateCommentRequest request) {
@@ -32,7 +32,7 @@ public class CommentController {
     return new AppApiResponse(response);
   }
 
-  @GetMapping("/{postId}/comments")
+  @GetMapping("/posts/{postId}/comments")
   AppApiResponse getComments(
     @PathVariable @Valid @NotNull(message = "Post ID is required") Long postId,
     @RequestParam(required = false) Long parentId,
@@ -40,5 +40,12 @@ public class CommentController {
 
     Page<CommentResponse> responses = commentService.getPostComments(postId, parentId, filter.toPageable());
     return new AppApiResponse(responses);
+  }
+
+  @DeleteMapping("/comments/{commentId}")
+  AppApiResponse deleteComment(@PathVariable @Valid @NotNull(message = "Comment ID is required") Long commentId) {
+    commentService.deleteComment(ContextUser.get().getUserId(), commentId);
+
+    return new AppApiResponse();
   }
 }
