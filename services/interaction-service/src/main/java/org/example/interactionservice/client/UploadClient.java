@@ -19,54 +19,63 @@ import java.util.Objects;
 @Service
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class UploadClient {
-    WebClient.Builder webClientBuilder;
-    String gatewayUrl;
-    String apiKeyHeader;
-    String apiKeyValue;
+  WebClient.Builder webClientBuilder;
+  String gatewayUrl;
+  String apiKeyHeader;
+  String apiKeyValue;
 
-    public UploadClient(PropsConfig props, WebClient.Builder webClientBuilder) {
-        this.webClientBuilder = webClientBuilder;
-        gatewayUrl = props.getGateway().getUrl();
-        apiKeyHeader = props.getApiKey().getHeader();
-        apiKeyValue = props.getApiKey().getInternal();
+  public UploadClient(PropsConfig props, WebClient.Builder webClientBuilder) {
+    this.webClientBuilder = webClientBuilder;
+    gatewayUrl = props.getGateway().getUrl();
+    apiKeyHeader = props.getApiKey().getHeader();
+    apiKeyValue = props.getApiKey().getInternal();
+  }
+
+  public String uploadLocal(MultipartFile file) {
+    MultipartBodyBuilder builder = new MultipartBodyBuilder();
+    builder.part("file", file.getResource());
+
+    return Objects.requireNonNull(webClientBuilder.build()
+      .post()
+      .uri(gatewayUrl + "/api/v1/upload/local")
+      .contentType(MediaType.MULTIPART_FORM_DATA)
+      .header(apiKeyHeader, apiKeyValue)
+      .body(BodyInserters.fromMultipartData(builder.build()))
+      .retrieve()
+      .bodyToMono(new ParameterizedTypeReference<AppApiResponse<String>>() {
+      })
+      .block()).getData();
+  }
+
+  public List<String> uploadLocalMultiple(List<MultipartFile> files) {
+    MultipartBodyBuilder builder = new MultipartBodyBuilder();
+
+    for (MultipartFile file : files) {
+      builder.part("files", file.getResource())
+        .filename(Objects.requireNonNull(file.getOriginalFilename()))
+        .contentType(file.getContentType() != null
+          ? MediaType.parseMediaType(file.getContentType())
+          : MediaType.APPLICATION_OCTET_STREAM);
     }
 
-    public String uploadLocal(MultipartFile file) {
-        MultipartBodyBuilder builder = new MultipartBodyBuilder();
-        builder.part("file", file.getResource());
+    AppApiResponse<List<String>> response = webClientBuilder.build()
+      .post()
+      .uri(gatewayUrl + "/api/v1/upload/local/multiple")
+      .contentType(MediaType.MULTIPART_FORM_DATA)
+      .header(apiKeyHeader, apiKeyValue)
+      .body(BodyInserters.fromMultipartData(builder.build()))
+      .retrieve()
+      .bodyToMono(new ParameterizedTypeReference<AppApiResponse<List<String>>>() {
+      })
+      .block();
 
-        return webClientBuilder.build()
-                .post()
-                .uri(gatewayUrl + "/api/v1/upload/local")
-                .contentType(MediaType.MULTIPART_FORM_DATA)
-                .header(apiKeyHeader, apiKeyValue)
-                .body(BodyInserters.fromMultipartData(builder.build()))
-                .retrieve()
-                .bodyToMono(String.class)
-                .block();
-    }
+    return response != null ? response.getData() : List.of();
+  }
 
-    public List<String> uploadLocalMultiple(List<MultipartFile> files) {
-        MultipartBodyBuilder builder = new MultipartBodyBuilder();
-
-        for (MultipartFile file : files) {
-            builder.part("files", file.getResource())
-                    .filename(Objects.requireNonNull(file.getOriginalFilename()))
-                    .contentType(file.getContentType() != null
-                            ? MediaType.parseMediaType(file.getContentType())
-                            : MediaType.APPLICATION_OCTET_STREAM);
-        }
-
-        return webClientBuilder.build()
-                .post()
-                .uri(gatewayUrl + "/api/v1/upload/local/multiple")
-                .contentType(MediaType.MULTIPART_FORM_DATA)
-                .header(apiKeyHeader, apiKeyValue)
-                .body(BodyInserters.fromMultipartData(builder.build()))
-                .retrieve()
-                .bodyToMono(new ParameterizedTypeReference<List<String>>() {})
-                .block();
-    }
-
-
+  @lombok.Data
+  private static class AppApiResponse<T> {
+    boolean success;
+    int code;
+    T data;
+  }
 }

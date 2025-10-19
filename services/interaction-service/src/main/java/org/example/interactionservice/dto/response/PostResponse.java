@@ -23,6 +23,7 @@ public class PostResponse {
   Long shareCount;
 
   List<MediaAttachmentResponse> mediaAttachments;
+  List<UserBasicResponse> taggedUsers;
 
   LocalDateTime createdAt;
   LocalDateTime updatedAt;

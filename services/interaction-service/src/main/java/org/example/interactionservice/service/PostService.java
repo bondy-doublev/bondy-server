@@ -11,6 +11,7 @@ import org.example.interactionservice.dto.request.CreatePostRequest;
 import org.example.interactionservice.dto.response.PostResponse;
 import org.example.interactionservice.dto.response.UserBasicResponse;
 import org.example.interactionservice.entity.MediaAttachment;
+import org.example.interactionservice.entity.Mention;
 import org.example.interactionservice.entity.Post;
 import org.example.interactionservice.entity.Share;
 import org.example.interactionservice.enums.MediaType;
@@ -27,6 +28,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @Service
 @RequiredArgsConstructor
@@ -44,7 +46,13 @@ public class PostService implements IPostService {
     Page<Post> posts = postRepo.findAll(pageable);
 
     List<Long> userIds = posts.stream()
-      .map(Post::getUserId)
+      .flatMap(post -> {
+        Stream<Long> tagUserStream = post.getTags() != null && !post.getTags().isEmpty()
+          ? post.getTags().stream()
+          .map(Mention::getUserId)
+          : Stream.empty();
+        return Stream.concat(Stream.of(post.getUserId()), tagUserStream);
+      })
       .distinct()
       .toList();
 
@@ -57,7 +65,17 @@ public class PostService implements IPostService {
         .collect(Collectors.toMap(UserBasicResponse::getId, u -> u));
 
       responses = posts.stream()
-        .map(post -> post.toPostResponse(userMap.get(post.getUserId())))
+        .map(post -> {
+          UserBasicResponse owner = userMap.get(post.getUserId());
+
+          List<UserBasicResponse> taggedUsers = post.getTags().stream()
+            .map(Mention::getUserId)
+            .map(userMap::get)
+            .filter(Objects::nonNull)
+            .toList();
+
+          return post.toPostResponse(owner, taggedUsers);
+        })
         .toList();
     }
 
@@ -66,7 +84,7 @@ public class PostService implements IPostService {
 
   @Override
   public Page<PostResponse> getWall(Long userId, Pageable pageable) {
-    return postRepo.findByUserId(userId, pageable).map(p -> p.toPostResponse(null));
+    return postRepo.findByUserId(userId, pageable).map(p -> p.toPostResponse(null, null));
   }
 
   @Override
@@ -94,6 +112,7 @@ public class PostService implements IPostService {
     // 3. Build Post
     Post newPost = Post.builder()
       .userId(ownerId)
+      .visibility(request.getIsPublic())
       .contentText(request.getContent())
       .build();
 
@@ -113,7 +132,22 @@ public class PostService implements IPostService {
       newPost.setMediaCount(mediaAttachments.size());
     }
 
-    return postRepo.save(newPost).toPostResponse(null);
+    if (request.getTagUserIds() != null && !request.getTagUserIds().isEmpty()) {
+      List<Mention> tags = new ArrayList<>();
+
+      for (Long id : request.getTagUserIds()) {
+        Mention tag = Mention.builder()
+          .post(newPost)
+          .userId(id)
+          .build();
+
+        tags.add(tag);
+      }
+
+      newPost.setTags(new HashSet<>(tags));
+    }
+
+    return postRepo.save(newPost).toPostResponse(null, null);
   }
 
   @Override
