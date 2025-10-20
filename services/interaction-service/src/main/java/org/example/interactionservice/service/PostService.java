@@ -7,6 +7,7 @@ import org.example.commonweb.enums.ErrorCode;
 import org.example.commonweb.exception.AppException;
 import org.example.interactionservice.client.AuthClient;
 import org.example.interactionservice.client.UploadClient;
+import org.example.interactionservice.config.security.ContextUser;
 import org.example.interactionservice.dto.request.CreatePostRequest;
 import org.example.interactionservice.dto.response.PostResponse;
 import org.example.interactionservice.dto.response.UserBasicResponse;
@@ -74,7 +75,7 @@ public class PostService implements IPostService {
             .filter(Objects::nonNull)
             .toList();
 
-          return post.toPostResponse(owner, taggedUsers);
+          return post.toPostResponse(owner, taggedUsers, post.getReactions().stream().anyMatch(r -> r.getUserId().equals(ContextUser.get().getUserId())));
         })
         .toList();
     }
@@ -84,7 +85,7 @@ public class PostService implements IPostService {
 
   @Override
   public Page<PostResponse> getWall(Long userId, Pageable pageable) {
-    return postRepo.findByUserId(userId, pageable).map(p -> p.toPostResponse(null, null));
+    return postRepo.findByUserId(userId, pageable).map(p -> p.toPostResponse(null, null, false));
   }
 
   @Override
@@ -136,6 +137,9 @@ public class PostService implements IPostService {
       List<Mention> tags = new ArrayList<>();
 
       for (Long id : request.getTagUserIds()) {
+        if (id.equals(ownerId))
+          throw new AppException(ErrorCode.BAD_REQUEST, "Can not mention yourself");
+
         Mention tag = Mention.builder()
           .post(newPost)
           .userId(id)
@@ -147,7 +151,7 @@ public class PostService implements IPostService {
       newPost.setTags(new HashSet<>(tags));
     }
 
-    return postRepo.save(newPost).toPostResponse(null, null);
+    return postRepo.save(newPost).toPostResponse(null, null, false);
   }
 
   @Override
