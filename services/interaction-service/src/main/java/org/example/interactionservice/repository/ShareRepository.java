@@ -6,4 +6,5 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface ShareRepository extends JpaRepository<Share, Long> {
+  int deleteShareByIdAndUserId(Long id, Long userId);
 }
