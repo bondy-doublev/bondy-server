@@ -16,11 +16,11 @@ import org.hibernate.annotations.DynamicInsert;
 @NoArgsConstructor
 @AllArgsConstructor
 public class Share extends BaseEntity {
-    @Column(name = "user_id")
-    Long userId;
+  @Column(name = "user_id")
+  Long userId;
 
-    @ManyToOne
-    @JoinColumn(name = "post_id", nullable = false)
-    @EqualsAndHashCode.Exclude
-    Post post;
+  @ManyToOne(fetch = FetchType.LAZY)
+  @JoinColumn(name = "post_id", nullable = false)
+  @EqualsAndHashCode.Exclude
+  Post post;
 }
