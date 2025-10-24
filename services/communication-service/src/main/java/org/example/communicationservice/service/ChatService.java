@@ -3,6 +3,8 @@ package org.example.communicationservice.service;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
+import org.example.communicationservice.dto.response.ConversationSummaryResponse;
+import org.example.communicationservice.dto.response.LastMessageBriefResponse;
 import org.example.communicationservice.entity.Conversation;
 import org.example.communicationservice.entity.ConversationParticipant;
 import org.example.communicationservice.entity.Message;
@@ -55,6 +57,10 @@ public class ChatService {
       if (content == null || content.isBlank()) {
         throw new IllegalArgumentException("content is required for TEXT message");
       }
+    } else {
+      if (attachments == null || attachments.isEmpty()) {
+        throw new IllegalArgumentException("attachments is required for non-TEXT message");
+      }
     }
 
     Message m = Message.builder()
@@ -70,7 +76,6 @@ public class ChatService {
       }
     }
     Message saved = messageRepo.save(m);
-    // Trả về entity đã join fetch đầy đủ cho DTO mapping bên ngoài transaction WS
     return messageRepo.findDetailById(saved.getId())
       .orElseThrow(() -> new IllegalStateException("Message not found after save"));
   }
@@ -106,7 +111,6 @@ public class ChatService {
       .orElseThrow(() -> new IllegalArgumentException("Message not found"));
 
     if (m.isDeleted()) {
-      // vẫn nên trả về bản đầy đủ để DTO mapping không bị lazy
       return messageRepo.findDetailById(m.getId())
         .orElseThrow(() -> new IllegalStateException("Message not found after delete"));
     }
@@ -135,5 +139,30 @@ public class ChatService {
   public Message getMessageDetail(Long id) {
     return messageRepo.findDetailById(id)
       .orElseThrow(() -> new IllegalArgumentException("Message not found"));
+  }
+
+  @Transactional(readOnly = true)
+  public Page<ConversationSummaryResponse> getUserConversations(Long userId, int page, int size) {
+    int pageSize = Math.max(size, 10);
+    var pageable = PageRequest.of(page, pageSize);
+
+    var rows = conversationRepo.findConversationsWithLastMessageByUserId(userId, pageable);
+
+    return rows.map(r -> ConversationSummaryResponse.builder()
+      .id(r.getConversation_id())
+      .type(r.getConversation_type())
+      .receiverId(r.getReceiver_id()) // NEW
+      .lastMessage(
+        r.getLast_message_id() == null ? null :
+          LastMessageBriefResponse.builder()
+            .id(r.getLast_message_id())
+            .senderId(r.getLast_message_sender_id())
+            .type(r.getLast_message_type())
+            .content(r.getLast_message_content())
+            .createdAt(r.getLast_message_created_at())
+            .build()
+      )
+      .build()
+    );
   }
 }

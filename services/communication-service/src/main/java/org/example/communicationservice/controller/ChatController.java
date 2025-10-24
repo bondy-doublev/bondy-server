@@ -140,4 +140,13 @@ public class ChatController {
       .deletedAt(m.getDeletedAt())
       .build();
   }
+
+  @GetMapping("/conversations")
+  public AppApiResponse listConversations(@RequestParam(defaultValue = "0") int page,
+                                          @RequestParam(defaultValue = "10") int size) {
+    Long selfId = ContextUser.get().getUserId();
+    var p = chatService.getUserConversations(selfId, page, size);
+    // Trả về danh sách; nếu cần meta phân trang, có thể mở rộng AppApiResponse
+    return new AppApiResponse(p.getContent());
+  }
 }
