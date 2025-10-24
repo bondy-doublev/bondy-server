@@ -6,22 +6,15 @@ import lombok.AccessLevel;
 import lombok.Data;
 import lombok.experimental.FieldDefaults;
 
-import java.util.List;
-
 @Data
 @FieldDefaults(level = AccessLevel.PRIVATE)
-public class SendMessageRequest {
+public class EditMessageRequest {
 
   @NotNull
-  Long conversationId;
+  Long messageId;
 
+  // Chỉ hỗ trợ sửa nội dung text
   @NotNull
-  String type; // TEXT, IMAGE, FILE
-
-  // Với TEXT: content bắt buộc (1..5000). Với IMAGE/FILE: content tuỳ chọn.
   @Size(min = 1, max = 5000)
   String content;
-
-  // Đối với IMAGE/FILE có thể kèm danh sách attachments
-  List<AttachmentDto> attachments;
 }
