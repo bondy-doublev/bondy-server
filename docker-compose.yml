@@ -27,6 +27,20 @@ services:
     volumes:
       - postgres_interaction_data:/var/lib/postgresql/data
 
+  postgres-communication:
+    image: postgres:15
+    container_name: postgres-communication
+    restart: always
+    ports:
+      - "5434:5432"
+    environment:
+      POSTGRES_DB: bondy-communication
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: 123456
+    volumes:
+      - postgres_communication_data:/var/lib/postgresql/data
+
 volumes:
   postgres_auth_data:
   postgres_interaction_data:
+  postgres_communication_data:

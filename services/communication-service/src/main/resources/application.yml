@@ -1,0 +1,10 @@
+spring:
+  application:
+    name: communication-service
+  config:
+    import: optional:configserver:http://localhost:8888
+  logging:
+    level:
+      org.springframework.messaging: DEBUG
+      org.springframework.web.socket: DEBUG
+      org.example.communicationservice.config.websocket: DEBUG
