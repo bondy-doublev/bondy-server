@@ -7,6 +7,7 @@ import lombok.Data;
 import lombok.experimental.FieldDefaults;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Data
 @Builder
@@ -16,6 +17,15 @@ public class ChatMessageResponse {
   Long id;
   Long conversationId;
   Long senderId;
-  String content;
+  String type;         // TEXT/IMAGE/FILE
+  String content;      // null nếu isDeleted=true
+  List<AttachmentResponse> attachments;
+
   LocalDateTime createdAt;
+
+  boolean edited;
+  LocalDateTime editedAt;
+
+  boolean deleted;
+  LocalDateTime deletedAt;
 }
