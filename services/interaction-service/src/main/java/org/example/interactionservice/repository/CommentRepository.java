@@ -35,10 +35,10 @@ public interface CommentRepository extends JpaRepository<Comment, Long> {
   @Transactional
   @Query(value = """
       WITH deleted AS (
-        DELETE FROM comments WHERE id = :id AND user_id = :userId RETURNING parent_id, post_id
+        DELETE FROM comments WHERE id = :id AND user_id = :userId RETURNING parent_id, post_id, child_count
       )
       UPDATE posts
-      SET comment_count = comment_count - 1
+      SET comment_count = comment_count - (1 + (SELECT child_count FROM deleted))
       WHERE id IN (SELECT post_id FROM deleted)
     """, nativeQuery = true)
   void decrementPostCommentCount(@Param("id") Long id, @Param("userId") Long userId);
