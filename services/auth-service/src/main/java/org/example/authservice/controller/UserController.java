@@ -35,6 +35,13 @@ public class UserController {
     return new AppApiResponse(user);
   }
 
+  @GetMapping("/{userId}/profile")
+  AppApiResponse getProfileById(@PathVariable Long userId) {
+    User user = userService.getProfile(userId);
+
+    return new AppApiResponse(user);
+  }
+
   @PutMapping(value = "/avatar", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
   AppApiResponse uploadAvatar(@RequestParam("file") MultipartFile file) {
     String avatarUrl = userService.uploadAvatar(file, ContextUser.get().getUserId());

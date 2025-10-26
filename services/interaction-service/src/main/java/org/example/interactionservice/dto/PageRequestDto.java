@@ -33,7 +33,7 @@ public class PageRequestDto {
       sortBy = "createdAt";
     }
 
-    if (!sortBy.matches("(?i)createdAt|id|name")) {
+    if (!sortBy.matches("(?i)createdAt|id|user_id|type|share_post_id")) {
       throw new IllegalArgumentException("Invalid sortBy value: " + sortBy);
     }
 

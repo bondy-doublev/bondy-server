@@ -14,10 +14,6 @@ import org.springframework.stereotype.Repository;
 public interface PostRepository extends JpaRepository<Post, Long> {
   Page<Post> findByUserId(Long userId, Pageable pageable);
 
-  @Modifying
-  @Query("DELETE FROM Post p WHERE p.id = :id")
-  int deleteByIdCustom(@Param("id") Long id);
-
   @Transactional
   @Modifying
   @Query("UPDATE Post p SET p.reactionCount = p.reactionCount + :delta WHERE p.id = :postId")
