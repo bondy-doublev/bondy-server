@@ -20,7 +20,7 @@ public class Share extends BaseEntity {
   Long userId;
 
   @ManyToOne(fetch = FetchType.LAZY)
-  @JoinColumn(name = "post_id", nullable = false)
+  @JoinColumn(name = "post_id")
   @EqualsAndHashCode.Exclude
   Post post;
 }

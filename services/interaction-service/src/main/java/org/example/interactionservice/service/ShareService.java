@@ -41,12 +41,18 @@ public class ShareService implements IShareService {
 
   @Override
   @Transactional
-  public void deleteShare(Long userId, Long postId) {
-    int deleted = shareRepo.deleteShareByIdAndUserId(postId, userId);
+  public void deleteShare(Long userId, Long shareId) {
+    AppException ex = new AppException(ErrorCode.BAD_REQUEST, "Delete share post fail");
 
-    if (deleted == 0)
-      throw new AppException(ErrorCode.BAD_REQUEST, "Delete share post fail");
+    Share share = shareRepo.findById(shareId)
+      .orElseThrow(() -> ex);
 
-    postRepo.updateShareCount(postId, -1);
+    if (!share.getUserId().equals(userId))
+      throw ex;
+
+    if (share.getPost() != null)
+      postRepo.updateShareCount(share.getPost().getId(), -1);
+
+    shareRepo.delete(share);
   }
 }

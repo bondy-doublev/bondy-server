@@ -8,5 +8,5 @@ public interface IShareService {
   Share createShare(Long userId, Long postId);
 
   @Transactional
-  void deleteShare(Long userId, Long postId);
+  void deleteShare(Long userId, Long shareId);
 }

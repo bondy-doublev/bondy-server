@@ -55,7 +55,7 @@ public class Post extends BaseEntityWithUpdate {
   Set<Reaction> reactions = new HashSet<>();
 
   @Builder.Default
-  @OneToMany(mappedBy = "post", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+  @OneToMany(mappedBy = "post", fetch = FetchType.LAZY)
   @ToString.Exclude
   Set<Share> shares = new HashSet<>();
 

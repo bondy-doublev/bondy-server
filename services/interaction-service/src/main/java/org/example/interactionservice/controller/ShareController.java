@@ -12,22 +12,22 @@ import org.springframework.web.bind.annotation.*;
 
 @Tag(name = "Share")
 @RestController
-@RequestMapping("/posts")
+@RequestMapping
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class ShareController {
   IShareService shareService;
 
-  @PostMapping("/{postId}/share")
+  @PostMapping("/posts/{postId}/shares")
   AppApiResponse createShare(@PathVariable Long postId) {
     Share share = shareService.createShare(ContextUser.get().getUserId(), postId);
 
     return new AppApiResponse(share);
   }
 
-  @DeleteMapping("/{postId}/share")
-  AppApiResponse deleteShare(@PathVariable Long postId) {
-    shareService.deleteShare(ContextUser.get().getUserId(), postId);
+  @DeleteMapping("/shares/{shareId}")
+  AppApiResponse deleteShare(@PathVariable Long shareId) {
+    shareService.deleteShare(ContextUser.get().getUserId(), shareId);
 
     return new AppApiResponse("Delete share post successfully");
   }
