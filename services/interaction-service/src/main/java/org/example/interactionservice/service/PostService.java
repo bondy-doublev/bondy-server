@@ -5,31 +5,23 @@ import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import org.example.commonweb.enums.ErrorCode;
 import org.example.commonweb.exception.AppException;
-import org.example.interactionservice.client.AuthClient;
 import org.example.interactionservice.client.UploadClient;
-import org.example.interactionservice.config.security.ContextUser;
 import org.example.interactionservice.dto.request.CreatePostRequest;
 import org.example.interactionservice.dto.response.PostResponse;
-import org.example.interactionservice.dto.response.UserBasicResponse;
 import org.example.interactionservice.entity.MediaAttachment;
 import org.example.interactionservice.entity.Mention;
 import org.example.interactionservice.entity.Post;
-import org.example.interactionservice.entity.Share;
 import org.example.interactionservice.enums.MediaType;
 import org.example.interactionservice.property.PropsConfig;
 import org.example.interactionservice.repository.PostRepository;
 import org.example.interactionservice.repository.ShareRepository;
 import org.example.interactionservice.service.interfaces.IPostService;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.*;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 @Service
 @RequiredArgsConstructor
@@ -40,53 +32,6 @@ public class PostService implements IPostService {
   ShareRepository shareRepo;
 
   UploadClient uploadClient;
-  AuthClient authClient;
-
-  @Override
-  public Page<PostResponse> getNewFeed(Pageable pageable) {
-    Page<Post> posts = postRepo.findAll(pageable);
-
-    List<Long> userIds = posts.stream()
-      .flatMap(post -> {
-        Stream<Long> tagUserStream = post.getTags() != null && !post.getTags().isEmpty()
-          ? post.getTags().stream()
-          .map(Mention::getUserId)
-          : Stream.empty();
-        return Stream.concat(Stream.of(post.getUserId()), tagUserStream);
-      })
-      .distinct()
-      .toList();
-
-    List<PostResponse> responses = new ArrayList<>();
-
-    if (!userIds.isEmpty()) {
-      List<UserBasicResponse> users = authClient.getBasicProfiles(userIds);
-
-      Map<Long, UserBasicResponse> userMap = users.stream()
-        .collect(Collectors.toMap(UserBasicResponse::getId, u -> u));
-
-      responses = posts.stream()
-        .map(post -> {
-          UserBasicResponse owner = userMap.get(post.getUserId());
-
-          List<UserBasicResponse> taggedUsers = post.getTags().stream()
-            .map(Mention::getUserId)
-            .map(userMap::get)
-            .filter(Objects::nonNull)
-            .toList();
-
-          return post.toPostResponse(owner, taggedUsers, post.getReactions().stream().anyMatch(r -> r.getUserId().equals(ContextUser.get().getUserId())));
-        })
-        .toList();
-    }
-
-    return new PageImpl<>(responses, pageable, posts.getTotalElements());
-  }
-
-  @Override
-  public Page<PostResponse> getWall(Long userId, Pageable pageable) {
-    return postRepo.findByUserId(userId, pageable).map(p -> p.toPostResponse(null, null, false));
-  }
 
   @Override
   public PostResponse createPost(Long ownerId, CreatePostRequest request) {
@@ -161,16 +106,9 @@ public class PostService implements IPostService {
 
     if (post.getUserId().equals(userId)) {
       postRepo.delete(post);
-      return;
+    } else {
+      throw new AppException(ErrorCode.BAD_REQUEST, "This post not belong to user");
     }
-
-    Set<Share> shares = post.getShares().stream().filter(s -> s.getUserId().equals(userId)).collect(Collectors.toSet());
-
-    if (shares.isEmpty()) {
-      throw new AppException(ErrorCode.BAD_REQUEST, "Anything to delete");
-    }
-
-    shareRepo.deleteAll(shares);
   }
 
   private boolean isVideoFile(MultipartFile file) {

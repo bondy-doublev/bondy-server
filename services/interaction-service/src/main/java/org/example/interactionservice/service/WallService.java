@@ -4,9 +4,11 @@ import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import org.example.interactionservice.client.AuthClient;
+import org.example.interactionservice.config.security.ContextUser;
 import org.example.interactionservice.dto.response.FeedItemResponse;
 import org.example.interactionservice.dto.response.UserBasicResponse;
 import org.example.interactionservice.entity.MediaAttachment;
+import org.example.interactionservice.entity.Mention;
 import org.example.interactionservice.entity.Post;
 import org.example.interactionservice.enums.FeedType;
 import org.example.interactionservice.repository.FeedRepository;
@@ -20,10 +22,7 @@ import org.springframework.stereotype.Service;
 
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -57,6 +56,11 @@ public class WallService implements IWallService {
 
     List<Post> posts = postRepo.findAllById(postIds);
 
+    posts.forEach(post -> {
+      userIds.add(post.getUserId());
+      post.getTags().forEach(tag -> userIds.add(tag.getUserId()));
+    });
+
     Map<Long, UserBasicResponse> userMap = authClient.getBasicProfiles(userIds.stream().toList())
       .stream().collect(Collectors.toMap(UserBasicResponse::getId, u -> u));
 
@@ -74,21 +78,53 @@ public class WallService implements IWallService {
 
       if (FeedType.POST.name().equals(type)) {
         Post post = postMap.get(id);
+        if (post == null)
+          return null;
+
+        List<UserBasicResponse> taggedUsers = post.getTags().stream()
+          .map(Mention::getUserId)
+          .map(userMap::get)
+          .filter(Objects::nonNull)
+          .toList();
+
         return FeedItemResponse.builder()
           .type(FeedType.POST.name())
           .id(id)
           .user(user)
-          .post(post.toPostResponse(user, List.of(), false))
+          .post(post.toPostResponse(
+            userMap.get(post.getUserId()),
+            taggedUsers,
+            post.getReactions().stream()
+              .anyMatch(r -> r.getUserId().equals(ContextUser.get().getUserId()))
+          ))
           .createdAt(createdAt)
           .build();
       } else {
-        Post sharedPost = postMap.get(sharedPostId);
+        Post sharedPost = sharedPostId != null ? postMap.get(sharedPostId) : null;
+
+        if (sharedPost == null) {
+          return FeedItemResponse.builder()
+            .type(FeedType.SHARE.name())
+            .id(id)
+            .user(user)
+            .post(null)
+            .createdAt(createdAt)
+            .build();
+        }
+        
         UserBasicResponse sharedOwner = userMap.get(sharedPost.getUserId());
+
+        List<UserBasicResponse> taggedUsers = sharedPost.getTags().stream()
+          .map(Mention::getUserId)
+          .map(userMap::get)
+          .filter(Objects::nonNull)
+          .toList();
+
         return FeedItemResponse.builder()
           .type(FeedType.SHARE.name())
           .id(id)
           .user(user)
-          .post(sharedPost.toPostResponse(sharedOwner, List.of(), false))
+          .post(sharedPost.toPostResponse(sharedOwner, taggedUsers, sharedPost.getReactions().stream().anyMatch(r -> r.getUserId().equals(ContextUser.get().getUserId()))))
           .createdAt(createdAt)
           .build();
       }
