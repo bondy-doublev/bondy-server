@@ -13,4 +13,5 @@ public class UserBasicResponse {
   String fullName;
   String avatarUrl;
   String address;
+  Integer friendCount;
 }

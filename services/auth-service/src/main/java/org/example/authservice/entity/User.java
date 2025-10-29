@@ -38,10 +38,13 @@ public class User extends BaseEntityWithUpdate {
   LocalDateTime dob;
   Boolean gender;
 
-  //  @JsonIgnore
+  @Column(name = "friend_count")
+  Integer friendCount;
+
+  // @JsonIgnore
   String role;
-  
-  //    @JsonIgnore
+
+  // @JsonIgnore
   Boolean active;
 
   @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)

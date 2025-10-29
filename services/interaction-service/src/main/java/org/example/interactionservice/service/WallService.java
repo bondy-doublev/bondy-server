@@ -16,7 +16,6 @@ import org.example.interactionservice.repository.MediaAttachmentRepository;
 import org.example.interactionservice.repository.PostRepository;
 import org.example.interactionservice.service.interfaces.IWallService;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
@@ -111,7 +110,7 @@ public class WallService implements IWallService {
             .createdAt(createdAt)
             .build();
         }
-        
+
         UserBasicResponse sharedOwner = userMap.get(sharedPost.getUserId());
 
         List<UserBasicResponse> taggedUsers = sharedPost.getTags().stream()
@@ -132,9 +131,8 @@ public class WallService implements IWallService {
   }
 
   @Override
-  public List<MediaAttachment> getWallMedia(Long userId) {
-    Pageable topNine = PageRequest.of(0, 9);
-    return mediaAttachmentRepo.findTopByUserId(userId, topNine);
+  public List<MediaAttachment> getWallMedia(Long userId, Pageable pageable) {
+    return mediaAttachmentRepo.findTopByUserId(userId, pageable);
   }
 
 }

@@ -10,5 +10,5 @@ import java.util.List;
 public interface IWallService {
   Page<FeedItemResponse> getWallFeed(Long userId, Pageable pageable);
 
-  List<MediaAttachment> getWallMedia(Long userId);
+  List<MediaAttachment> getWallMedia(Long userId, Pageable pageable);
 }

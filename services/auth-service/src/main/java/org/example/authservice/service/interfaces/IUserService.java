@@ -32,4 +32,6 @@ public interface IUserService {
   List<User> searchUsers(String address, String name);
 
   Page<UserBasicResponse> getAllBasicProfiles(int page);
+
+  void updateFriendCount(Long senderId, Long receiverId, int delta);
 }

@@ -30,7 +30,8 @@ public interface UserRepository extends JpaRepository<User, Long>, JpaSpecificat
                 CASE WHEN u.lastName IS NOT NULL AND u.lastName <> '' THEN CONCAT(' ', u.lastName) ELSE '' END,
                 CASE WHEN u.middleName IS NOT NULL AND u.middleName <> '' THEN CONCAT(' ', u.middleName) ELSE '' END
             ),
-            u.avatarUrl
+            u.avatarUrl,
+            u.friendCount
         )
         FROM User u
         WHERE u.id IN :userIds
@@ -45,7 +46,8 @@ public interface UserRepository extends JpaRepository<User, Long>, JpaSpecificat
                 CASE WHEN u.lastName IS NOT NULL AND u.lastName <> '' THEN CONCAT(' ', u.lastName) ELSE '' END,
                 CASE WHEN u.middleName IS NOT NULL AND u.middleName <> '' THEN CONCAT(' ', u.middleName) ELSE '' END
             ),
-            u.avatarUrl
+            u.avatarUrl,
+            u.friendCount
         )
         FROM User u
         WHERE u.id = :userId
@@ -62,7 +64,8 @@ public interface UserRepository extends JpaRepository<User, Long>, JpaSpecificat
                 CASE WHEN u.lastName IS NOT NULL AND u.lastName <> '' THEN CONCAT(' ', u.lastName) ELSE '' END,
                 CASE WHEN u.middleName IS NOT NULL AND u.middleName <> '' THEN CONCAT(' ', u.middleName) ELSE '' END
             ),
-            u.avatarUrl
+            u.avatarUrl,
+            u.friendCount
         )
         FROM User u
     """)

@@ -36,7 +36,7 @@ public class FriendshipController {
   @GetMapping("/suggest/{userId}")
   public AppApiResponse suggestFriends(
     @PathVariable("userId") Long userId,
-    @RequestParam(defaultValue = "0") int page) { // thêm page
+    @RequestParam(defaultValue = "0") int page) {
     List<FriendSuggestResponse> suggestions = friendshipService.suggestFriends(userId, page);
     return new AppApiResponse(suggestions);
   }

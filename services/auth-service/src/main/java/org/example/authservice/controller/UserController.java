@@ -12,6 +12,8 @@ import org.example.authservice.dto.response.UserBasicResponse;
 import org.example.authservice.entity.User;
 import org.example.authservice.service.interfaces.IUserService;
 import org.example.commonweb.DTO.core.AppApiResponse;
+import org.example.commonweb.enums.ErrorCode;
+import org.example.commonweb.exception.AppException;
 import org.springframework.data.domain.Page;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
@@ -120,5 +122,20 @@ public class UserController {
   ) {
     List<User> users = userService.searchUsers(address, name);
     return new AppApiResponse(users);
+  }
+
+  @PutMapping("/friend-count")
+  AppApiResponse updateFriendCount(
+    @RequestParam("senderId") Long senderId,
+    @RequestParam("receiverId") Long receiverId,
+    @RequestParam("action") String action) {
+    if (!action.equals("add") && !action.equals("remove")) {
+      throw new AppException(ErrorCode.BAD_REQUEST, "Invalid action. Must be 'add' or 'remove'.");
+    }
+
+    int delta = action.equals("add") ? 1 : -1;
+    userService.updateFriendCount(senderId, receiverId, delta);
+
+    return new AppApiResponse();
   }
 }
