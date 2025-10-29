@@ -23,12 +23,14 @@ public class UploadClient {
   String gatewayUrl;
   String apiKeyHeader;
   String apiKeyValue;
+  String environment;
 
   public UploadClient(PropsConfig props, WebClient.Builder webClientBuilder) {
     this.webClientBuilder = webClientBuilder;
     gatewayUrl = props.getGateway().getUrl();
     apiKeyHeader = props.getApiKey().getHeader();
     apiKeyValue = props.getApiKey().getInternal();
+    environment = props.getEnvironment();
   }
 
   public String uploadLocal(MultipartFile file) {
@@ -58,9 +60,11 @@ public class UploadClient {
           : MediaType.APPLICATION_OCTET_STREAM);
     }
 
+    String addressUpload = environment.equals("Production") ? "local" : "cloudinary";
+
     AppApiResponse<List<String>> response = webClientBuilder.build()
       .post()
-      .uri(gatewayUrl + "/api/v1/upload/local/multiple")
+      .uri(gatewayUrl + "/api/v1/upload/" + addressUpload + "/multiple")
       .contentType(MediaType.MULTIPART_FORM_DATA)
       .header(apiKeyHeader, apiKeyValue)
       .body(BodyInserters.fromMultipartData(builder.build()))

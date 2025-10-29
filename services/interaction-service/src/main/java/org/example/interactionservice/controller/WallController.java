@@ -31,8 +31,8 @@ public class WallController {
   }
 
   @GetMapping("/{userId}/medias")
-  AppApiResponse getWallMedia(@PathVariable Long userId) {
-    List<MediaAttachment> medias = wallService.getWallMedia(userId);
+  AppApiResponse getWallMedia(@PathVariable Long userId, @ModelAttribute @Valid PageRequestDto filter) {
+    List<MediaAttachment> medias = wallService.getWallMedia(userId, filter.toPageable());
 
     return new AppApiResponse(medias);
   }

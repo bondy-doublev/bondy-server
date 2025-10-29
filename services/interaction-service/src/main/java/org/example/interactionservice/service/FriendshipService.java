@@ -49,6 +49,9 @@ public class FriendshipService {
 
     f.setStatus(Friendship.Status.ACCEPTED);
     f.setRespondedAt(LocalDateTime.now());
+
+    authClient.updateFriendCount(senderId, receiverId, "add");
+
     return friendshipRepository.save(f);
   }
 

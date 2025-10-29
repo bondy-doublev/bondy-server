@@ -19,6 +19,7 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -105,6 +106,26 @@ public class UserService implements IUserService {
   public Page<UserBasicResponse> getAllBasicProfiles(int page) {
     Pageable pageable = PageRequest.of(page, 15); // 15 user / page
     return userRepository.findAllBasicProfiles(pageable);
+  }
+
+  @Override
+  public void updateFriendCount(Long senderId, Long receiverId, int delta) {
+    User sender = userRepository.findById(senderId)
+      .orElseThrow(() -> new RuntimeException("User not found"));
+
+    User receiver = userRepository.findById(receiverId)
+      .orElseThrow(() -> new RuntimeException("User not found"));
+
+    int newCountSender = Math.max(0, sender.getFriendCount() + delta);
+    sender.setFriendCount(newCountSender);
+
+    int newCountReceiver = Math.max(0, receiver.getFriendCount() + delta);
+    receiver.setFriendCount(newCountReceiver);
+    List<User> users = new ArrayList<>();
+    users.add(sender);
+    users.add(receiver);
+
+    userRepository.saveAll(users);
   }
 
   public List<User> getAllUsers() {

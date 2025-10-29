@@ -2,6 +2,9 @@ package org.example.interactionservice.client;
 
 import lombok.AccessLevel;
 import lombok.experimental.FieldDefaults;
+import lombok.extern.slf4j.Slf4j;
+import org.example.commonweb.enums.ErrorCode;
+import org.example.commonweb.exception.AppException;
 import org.example.interactionservice.dto.response.UserBasicResponse;
 import org.example.interactionservice.property.PropsConfig;
 import org.springframework.core.ParameterizedTypeReference;
@@ -15,6 +18,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
+@Slf4j
 @Service
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class AuthClient {
@@ -75,6 +79,25 @@ public class AuthClient {
       .block();
 
     return Objects.requireNonNull(response).getData();
+  }
+
+  public void updateFriendCount(Long senderId, Long receiverId, String action) {
+    if (!"add".equalsIgnoreCase(action) && !"remove".equalsIgnoreCase(action)) {
+      throw new AppException(ErrorCode.BAD_REQUEST, "Invalid action: must be 'add' or 'remove'");
+    }
+
+    String url = String.format("%s/api/v1/users/friend-count?senderId=%d&receiverId=%d&action=%s",
+      gatewayUrl, senderId, receiverId, action);
+
+    log.info("Calling internal API: {}", url);
+
+    webClientBuilder.build()
+      .put()
+      .uri(url)
+      .header(apiKeyHeader, apiKeyValue)
+      .retrieve()
+      .toBodilessEntity()
+      .block();
   }
 
   @lombok.Data
