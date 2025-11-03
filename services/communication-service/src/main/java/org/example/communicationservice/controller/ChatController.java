@@ -8,9 +8,7 @@ import org.example.communicationservice.config.security.ContextUser;
 import org.example.communicationservice.dto.request.AttachmentDto;
 import org.example.communicationservice.dto.request.EditMessageRequest;
 import org.example.communicationservice.dto.request.SendMessageRequest;
-import org.example.communicationservice.dto.response.AttachmentResponse;
-import org.example.communicationservice.dto.response.ChatMessageResponse;
-import org.example.communicationservice.dto.response.ConversationResponse;
+import org.example.communicationservice.dto.response.*;
 import org.example.communicationservice.entity.Conversation;
 import org.example.communicationservice.entity.Message;
 import org.example.communicationservice.entity.MessageAttachment;
@@ -68,9 +66,13 @@ public class ChatController {
     );
 
     ChatMessageResponse payload = toResponse(saved);
-    String topic = "/topic/conversations." + saved.getConversation().getId();
+    Long conversationId = saved.getConversation().getId();
+    String topic = "/topic/conversations." + conversationId;
     messagingTemplate.convertAndSend(topic, payload);
     messagingTemplate.convertAndSendToUser(String.valueOf(selfId), "/queue/messages", payload);
+
+    // Notify unread cho các participant khác
+    notifyUnreadForConversation(conversationId, selfId);
 
     return new AppApiResponse(payload);
   }
@@ -101,6 +103,69 @@ public class ChatController {
     messagingTemplate.convertAndSend(topic, payload);
 
     return new AppApiResponse(payload);
+  }
+
+  // NEW: Mark all as read
+  @PutMapping("/conversations/{conversationId}/read-all")
+  public AppApiResponse markReadAll(@PathVariable Long conversationId) {
+    Long selfId = ContextUser.get().getUserId();
+    var readAt = chatService.markAllAsRead(conversationId, selfId);
+
+    var receipt = ReadReceiptResponse.builder()
+      .conversationId(conversationId)
+      .readerId(selfId)
+      .readAt(readAt)
+      .build();
+
+    // Broadcast read receipt cho mọi người trong conversation
+    String topic = "/topic/conversations." + conversationId + ".read";
+    messagingTemplate.convertAndSend(topic, receipt);
+
+    // Gửi cập nhật unread (về 0 cho conversation này) + summary cho chính user
+    long unread = chatService.getUnreadCount(conversationId, selfId);
+    var perConv = UnreadConversationCountResponse.builder()
+      .conversationId(conversationId).unreadCount(unread).build();
+    messagingTemplate.convertAndSendToUser(String.valueOf(selfId), "/queue/unread.conversation", perConv);
+
+    UnreadSummaryResponse summary = chatService.getUnreadSummary(selfId);
+    messagingTemplate.convertAndSendToUser(String.valueOf(selfId), "/queue/unread.summary", summary);
+
+    return new AppApiResponse(receipt);
+  }
+
+  // NEW: Lấy snapshot tổng số chưa đọc
+  @GetMapping("/unread/summary")
+  public AppApiResponse getUnreadSummary() {
+    Long selfId = ContextUser.get().getUserId();
+    UnreadSummaryResponse summary = chatService.getUnreadSummary(selfId);
+    return new AppApiResponse(summary);
+  }
+
+  // NEW: Lấy số chưa đọc của 1 conversation
+  @GetMapping("/conversations/{conversationId}/unread")
+  public AppApiResponse getUnreadByConversation(@PathVariable Long conversationId) {
+    Long selfId = ContextUser.get().getUserId();
+    long unread = chatService.getUnreadCount(conversationId, selfId);
+    return new AppApiResponse(
+      UnreadConversationCountResponse.builder()
+        .conversationId(conversationId)
+        .unreadCount(unread)
+        .build()
+    );
+  }
+
+  private void notifyUnreadForConversation(Long conversationId, Long excludeUserId) {
+    List<Long> participantIds = chatService.getParticipantUserIds(conversationId);
+    for (Long uid : participantIds) {
+      if (excludeUserId != null && excludeUserId.equals(uid)) continue;
+      long unread = chatService.getUnreadCount(conversationId, uid);
+      var perConv = UnreadConversationCountResponse.builder()
+        .conversationId(conversationId).unreadCount(unread).build();
+      messagingTemplate.convertAndSendToUser(String.valueOf(uid), "/queue/unread.conversation", perConv);
+
+      UnreadSummaryResponse summary = chatService.getUnreadSummary(uid);
+      messagingTemplate.convertAndSendToUser(String.valueOf(uid), "/queue/unread.summary", summary);
+    }
   }
 
   private MessageAttachment toEntity(AttachmentDto dto) {
@@ -146,7 +211,6 @@ public class ChatController {
                                           @RequestParam(defaultValue = "10") int size) {
     Long selfId = ContextUser.get().getUserId();
     var p = chatService.getUserConversations(selfId, page, size);
-    // Trả về danh sách; nếu cần meta phân trang, có thể mở rộng AppApiResponse
     return new AppApiResponse(p.getContent());
   }
 }

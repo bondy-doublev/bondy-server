@@ -6,8 +6,7 @@ import lombok.experimental.FieldDefaults;
 import org.example.communicationservice.dto.request.AttachmentDto;
 import org.example.communicationservice.dto.request.EditMessageRequest;
 import org.example.communicationservice.dto.request.SendMessageRequest;
-import org.example.communicationservice.dto.response.AttachmentResponse;
-import org.example.communicationservice.dto.response.ChatMessageResponse;
+import org.example.communicationservice.dto.response.*;
 import org.example.communicationservice.entity.Message;
 import org.example.communicationservice.entity.MessageAttachment;
 import org.example.communicationservice.enums.MessageType;
@@ -40,16 +39,19 @@ public class ChatWsController {
       atts = request.getAttachments().stream().map(this::toEntity).toList();
     }
 
-    // Service đã trả về entity đã fetch join đầy đủ
     Message saved = chatService.sendMessage(
       request.getConversationId(), senderId, MessageType.valueOf(request.getType()),
       request.getContent(), atts
     );
 
     ChatMessageResponse payload = toResponse(saved);
-    String topic = "/topic/conversations." + saved.getConversation().getId();
+    Long conversationId = saved.getConversation().getId();
+    String topic = "/topic/conversations." + conversationId;
     messagingTemplate.convertAndSend(topic, payload);
     messagingTemplate.convertAndSendToUser(String.valueOf(senderId), "/queue/messages", payload);
+
+    // Notify unread cho các participant khác
+    notifyUnreadForConversation(conversationId, senderId);
   }
 
   @MessageMapping("/chat.updateMessage")
@@ -59,7 +61,7 @@ public class ChatWsController {
     Long editorId = resolveUserId(principal, attrs);
     Message updated = chatService.editOwnTextMessage(request.getMessageId(), editorId, request.getContent());
 
-    ChatMessageResponse payload = toResponse(updated); // không còn LIE
+    ChatMessageResponse payload = toResponse(updated);
     String topic = "/topic/conversations." + updated.getConversation().getId();
     messagingTemplate.convertAndSend(topic, payload);
   }
@@ -71,9 +73,81 @@ public class ChatWsController {
     Long requesterId = resolveUserId(principal, attrs);
     Message deleted = chatService.softDeleteMessage(messageId, requesterId);
 
-    ChatMessageResponse payload = toResponse(deleted); // không còn LIE
+    ChatMessageResponse payload = toResponse(deleted);
     String topic = "/topic/conversations." + deleted.getConversation().getId();
     messagingTemplate.convertAndSend(topic, payload);
+  }
+
+  // NEW: đánh dấu đã đọc qua WS
+  @MessageMapping("/chat.readAll")
+  public void readAll(Long conversationId,
+                      Principal principal,
+                      @Header("simpSessionAttributes") Map<String, Object> attrs) {
+    Long userId = resolveUserId(principal, attrs);
+    var readAt = chatService.markAllAsRead(conversationId, userId);
+
+    var receipt = ReadReceiptResponse.builder()
+      .conversationId(conversationId)
+      .readerId(userId)
+      .readAt(readAt)
+      .build();
+
+    // Broadcast read receipt
+    String topic = "/topic/conversations." + conversationId + ".read";
+    messagingTemplate.convertAndSend(topic, receipt);
+
+    // Gửi cập nhật unread cho chính user
+    long unread = chatService.getUnreadCount(conversationId, userId);
+    var perConv = UnreadConversationCountResponse.builder()
+      .conversationId(conversationId).unreadCount(unread).build();
+    messagingTemplate.convertAndSendToUser(String.valueOf(userId), "/queue/unread.conversation", perConv);
+
+    UnreadSummaryResponse summary = chatService.getUnreadSummary(userId);
+    messagingTemplate.convertAndSendToUser(String.valueOf(userId), "/queue/unread.summary", summary);
+  }
+
+  // NEW: client yêu cầu snapshot tổng unread
+  @MessageMapping("/chat.getUnread")
+  public void getUnread(Principal principal,
+                        @Header("simpSessionAttributes") Map<String, Object> attrs) {
+    Long userId = resolveUserId(principal, attrs);
+    UnreadSummaryResponse summary = chatService.getUnreadSummary(userId);
+    System.out.println("[chat.getUnread] userId=" + userId);
+    messagingTemplate.convertAndSendToUser(String.valueOf(userId),
+      "/queue/unread.summary", "{}");
+    messagingTemplate.convertAndSend("/user/" + userId + "/queue/unread.summary", summary);
+    System.out.println("[chat.getUnread] sent trigger to /user/" + userId + "/queue/unread.summary");
+  }
+
+  private void notifyUnreadForConversation(Long conversationId, Long excludeUserId) {
+    List<Long> participantIds = chatService.getParticipantUserIds(conversationId);
+    System.out.println("[notifyUnreadForConversation] conversationId=" + conversationId
+      + " excludeUserId=" + excludeUserId
+      + " participants=" + participantIds);
+
+    for (Long uid : participantIds) {
+      if (excludeUserId != null && excludeUserId.equals(uid)) {
+        System.out.println("  ➤ Skip sender: " + uid);
+        continue;
+      }
+
+      try {
+//        long unread = chatService.getUnreadCount(conversationId, uid);
+//        System.out.println("  ➤ Sending unread update to user " + uid + " (unread=" + unread + ")");
+//
+//        var perConv = UnreadConversationCountResponse.builder()
+//          .conversationId(conversationId).unreadCount(unread).build();
+//        messagingTemplate.convertAndSendToUser(String.valueOf(uid), "/queue/unread.conversation", perConv);
+
+        UnreadSummaryResponse summary = chatService.getUnreadSummary(uid);
+        System.out.println("Sending to user " + uid + " via /queue/unread.summary");
+        messagingTemplate.convertAndSendToUser(String.valueOf(uid), "/queue/unread.summary", summary);
+        messagingTemplate.convertAndSend("user/queue/unread.summary", summary);
+      } catch (Exception e) {
+        System.err.println("  ⚠️ Error sending unread update to user " + uid + ": " + e.getMessage());
+        e.printStackTrace();
+      }
+    }
   }
 
   private Long resolveUserId(Principal principal, Map<String, Object> attrs) {

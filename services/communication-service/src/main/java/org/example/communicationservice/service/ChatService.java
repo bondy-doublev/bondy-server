@@ -5,6 +5,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import org.example.communicationservice.dto.response.ConversationSummaryResponse;
 import org.example.communicationservice.dto.response.LastMessageBriefResponse;
+import org.example.communicationservice.dto.response.UnreadConversationCountResponse;
+import org.example.communicationservice.dto.response.UnreadSummaryResponse;
 import org.example.communicationservice.entity.Conversation;
 import org.example.communicationservice.entity.ConversationParticipant;
 import org.example.communicationservice.entity.Message;
@@ -19,6 +21,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -76,6 +79,17 @@ public class ChatService {
       }
     }
     Message saved = messageRepo.save(m);
+
+    // Người gửi không có "unread" do tin của chính họ
+    participantRepo.findByConversation_IdAndUserId(conversationId, senderId).ifPresent(cp -> {
+      LocalDateTime readAt = saved.getCreatedAt() != null ? saved.getCreatedAt() : LocalDateTime.now();
+      // Ghi đè nếu lớn hơn (tránh lùi thời điểm đã đọc)
+      if (cp.getLastReadAt() == null || readAt.isAfter(cp.getLastReadAt())) {
+        cp.setLastReadAt(readAt);
+        participantRepo.save(cp);
+      }
+    });
+
     return messageRepo.findDetailById(saved.getId())
       .orElseThrow(() -> new IllegalStateException("Message not found after save"));
   }
@@ -151,7 +165,7 @@ public class ChatService {
     return rows.map(r -> ConversationSummaryResponse.builder()
       .id(r.getConversation_id())
       .type(r.getConversation_type())
-      .receiverId(r.getReceiver_id()) // NEW
+      .receiverId(r.getReceiver_id())
       .lastMessage(
         r.getLast_message_id() == null ? null :
           LastMessageBriefResponse.builder()
@@ -164,5 +178,54 @@ public class ChatService {
       )
       .build()
     );
+  }
+
+  @Transactional
+  public LocalDateTime markAllAsRead(Long conversationId, Long userId) {
+    ConversationParticipant cp = participantRepo.findByConversation_IdAndUserId(conversationId, userId)
+      .orElseThrow(() -> new IllegalArgumentException("Participant not found"));
+    LocalDateTime now = LocalDateTime.now();
+    // Chỉ tiến tới (idempotent, tránh lùi mốc)
+    if (cp.getLastReadAt() == null || now.isAfter(cp.getLastReadAt())) {
+      cp.setLastReadAt(now);
+      participantRepo.save(cp);
+    }
+    return cp.getLastReadAt();
+  }
+
+  @Transactional(readOnly = true)
+  public long getUnreadCount(Long conversationId, Long userId) {
+    LocalDateTime lastReadAt = participantRepo.findByConversation_IdAndUserId(conversationId, userId)
+      .map(ConversationParticipant::getLastReadAt)
+      .orElse(null);
+
+    if (lastReadAt == null) {
+      return messageRepo.countUnreadWhenNoReadAt(conversationId, userId);
+    }
+    return messageRepo.countUnread(conversationId, userId, lastReadAt);
+  }
+
+  @Transactional(readOnly = true)
+  public UnreadSummaryResponse getUnreadSummary(Long userId) {
+    var rows = messageRepo.findUnreadByUser(userId);
+    var items = new ArrayList<UnreadConversationCountResponse>(rows.size());
+    long total = 0L;
+    for (var r : rows) {
+      long count = r.getUnread() == null ? 0L : r.getUnread();
+      total += count;
+      items.add(UnreadConversationCountResponse.builder()
+        .conversationId(r.getConversationId())
+        .unreadCount(count)
+        .build());
+    }
+    return UnreadSummaryResponse.builder()
+      .items(items)
+      .total(total)
+      .build();
+  }
+
+  @Transactional(readOnly = true)
+  public List<Long> getParticipantUserIds(Long conversationId) {
+    return participantRepo.findUserIdsByConversationId(conversationId);
   }
 }
