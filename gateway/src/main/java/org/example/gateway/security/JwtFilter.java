@@ -21,7 +21,7 @@ import java.util.List;
 import java.util.Objects;
 
 @Component
-@Order(Ordered.HIGHEST_PRECEDENCE)
+@Order(Ordered.HIGHEST_PRECEDENCE + 1)
 public class JwtFilter implements GlobalFilter {
   private static final Logger log = LoggerFactory.getLogger(JwtFilter.class);
   private final JwtService jwtService;
