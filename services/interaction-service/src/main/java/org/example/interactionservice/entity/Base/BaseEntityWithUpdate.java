@@ -13,25 +13,29 @@ import java.time.LocalDateTime;
 @EqualsAndHashCode(onlyExplicitlyIncluded = true)
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public abstract class BaseEntityWithUpdate {
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @EqualsAndHashCode.Include
-    Long id;
+  @Id
+  @GeneratedValue(strategy = GenerationType.IDENTITY)
+  @EqualsAndHashCode.Include
+  Long id;
 
-    @Column(name = "created_at")
-    LocalDateTime createdAt;
+  @Column(name = "created_at")
+  LocalDateTime createdAt;
 
-    @Column(name = "updated_at")
-    LocalDateTime updatedAt;
+  @Column(name = "updated_at")
+  LocalDateTime updatedAt;
 
-    @PrePersist
-    protected void onCreate() {
-        this.createdAt = LocalDateTime.now();
-        this.updatedAt = null;
-    }
+  @Column(name = "is_notified")
+  Boolean isNotified;
 
-    @PreUpdate
-    protected void onUpdate() {
-        this.updatedAt = LocalDateTime.now();
-    }
+  @PrePersist
+  protected void onCreate() {
+    this.createdAt = LocalDateTime.now();
+    this.updatedAt = null;
+    this.isNotified = false;
+  }
+
+  @PreUpdate
+  protected void onUpdate() {
+    this.updatedAt = LocalDateTime.now();
+  }
 }

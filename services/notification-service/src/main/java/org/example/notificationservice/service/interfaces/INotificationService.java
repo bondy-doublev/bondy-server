@@ -1,6 +1,6 @@
 package org.example.notificationservice.service.interfaces;
 
-import org.example.notificationservice.DTO.request.CreateNotificationRequest;
+import org.example.notificationservice.dto.request.CreateNotificationRequest;
 import org.example.notificationservice.entity.Notification;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;

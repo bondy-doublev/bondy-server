@@ -1,15 +1,14 @@
-package org.example.notificationservice.DTO.request;
+package org.example.notificationservice.dto.request;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
-import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import org.example.notificationservice.enums.RefType;
-import org.example.notificationservice.enums.Type;
+import org.example.commonweb.enums.NotificationType;
+import org.example.commonweb.enums.RefType;
 
 @Data
 @NoArgsConstructor
@@ -25,17 +24,19 @@ public class CreateNotificationRequest {
   @Positive(message = "Actor ID must be a positive number")
   private Long actorId;
 
+  @NotBlank(message = "Actor name not null")
+  private String actorName;
+
+  @NotBlank(message = "Actor avatar url not null")
+  private String actorAvatarUrl;
+
   @NotNull(message = "Reference ID must not be null")
   @Positive(message = "Reference ID must be a positive number")
   private Long refId;
 
   @NotNull(message = "Type must not be null")
-  private Type type;
+  private NotificationType type;
 
   @NotNull(message = "Reference type must not be null")
   private RefType refType;
-
-  @NotBlank(message = "Message must not be blank")
-  @Size(max = 255, message = "Message must not exceed 255 characters")
-  private String message;
 }

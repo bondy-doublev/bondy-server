@@ -6,8 +6,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import org.example.commonweb.enums.ErrorCode;
 import org.example.commonweb.exception.AppException;
-import org.example.notificationservice.DTO.request.CreateNotificationRequest;
-import org.example.notificationservice.controller.NotificationWsController;
+import org.example.notificationservice.dto.request.CreateNotificationRequest;
 import org.example.notificationservice.entity.Notification;
 import org.example.notificationservice.repository.NotificationRepository;
 import org.example.notificationservice.service.interfaces.INotificationService;
@@ -15,12 +14,16 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
+import java.util.Objects;
+import java.util.Optional;
+
 @Service
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class NotificationService implements INotificationService {
   NotificationRepository notificationRepository;
-  NotificationWsController notificationWsController;
+  NotificationWsService notificationWsService;
 
   @Override
   public Page<Notification> getNotificationsByUserId(Long userId, Pageable pageable) {
@@ -30,34 +33,41 @@ public class NotificationService implements INotificationService {
   @Override
   @Transactional
   public Notification createNotification(CreateNotificationRequest request) {
-    if (request.getUserId().equals(request.getActorId())) {
+    if (Objects.equals(request.getUserId(), request.getActorId())) {
       throw new AppException(ErrorCode.BAD_REQUEST, "User cannot notify themselves");
     }
 
-    boolean exists = notificationRepository.existsByUserIdAndRefTypeAndRefIdAndActorId(
-      request.getUserId(),
-      request.getRefType(),
-      request.getRefId(),
-      request.getActorId()
-    );
+    boolean isUniqueType = switch (request.getType()) {
+      case LIKE, FRIEND_REQUEST, ACCEPT -> true;
+      default -> false;
+    };
 
-    if (exists) {
-      throw new AppException(ErrorCode.DUPLICATE_RESOURCE, "Notification already exists");
+    Notification notification;
+
+    if (isUniqueType) {
+      Optional<Notification> existing = notificationRepository
+        .findByUserIdAndTypeAndRefTypeAndRefIdAndActorId(
+          request.getUserId(),
+          request.getType(),
+          request.getRefType(),
+          request.getRefId(),
+          request.getActorId()
+        );
+
+      if (existing.isPresent()) {
+        notification = existing.get();
+        notification.setCreatedAt(LocalDateTime.now());
+        notification.setIsRead(false);
+      } else {
+        notification = buildNotification(request);
+      }
+    } else {
+      notification = buildNotification(request);
     }
-
-    Notification notification = Notification.builder()
-      .userId(request.getUserId())
-      .actorId(request.getActorId())
-      .type(request.getType())
-      .refId(request.getRefId())
-      .refType(request.getRefType())
-      .message(request.getMessage())
-      .isRead(false)
-      .build();
 
     Notification saved = notificationRepository.save(notification);
 
-    notificationWsController.sendNotificationToUser(saved.getUserId(), saved);
+    notificationWsService.sendNotificationToUser(saved.getUserId(), saved);
 
     return saved;
   }
@@ -70,5 +80,18 @@ public class NotificationService implements INotificationService {
   @Override
   public void markRead(Long userId) {
     notificationRepository.markAllAsReadByUserId(userId);
+  }
+
+  private Notification buildNotification(CreateNotificationRequest req) {
+    return Notification.builder()
+      .userId(req.getUserId())
+      .actorId(req.getActorId())
+      .actorName(req.getActorName())
+      .actorAvatarUrl(req.getActorAvatarUrl())
+      .type(req.getType())
+      .refType(req.getRefType())
+      .refId(req.getRefId())
+      .isRead(false)
+      .build();
   }
 }

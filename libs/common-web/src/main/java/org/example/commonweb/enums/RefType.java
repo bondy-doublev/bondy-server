@@ -1,9 +1,10 @@
-package org.example.notificationservice.enums;
+package org.example.commonweb.enums;
 
 public enum RefType {
   FRIENDSHIP,
   COMMENT,
   REACTION,
   MESSAGE,
-  USER
+  USER,
+  POST
 }
