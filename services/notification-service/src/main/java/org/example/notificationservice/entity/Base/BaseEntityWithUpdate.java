@@ -1,4 +1,4 @@
-package org.example.interactionservice.entity.Base;
+package org.example.notificationservice.entity.Base;
 
 import jakarta.persistence.*;
 import lombok.AccessLevel;
@@ -12,7 +12,7 @@ import java.time.LocalDateTime;
 @Data
 @EqualsAndHashCode(onlyExplicitlyIncluded = true)
 @FieldDefaults(level = AccessLevel.PRIVATE)
-public abstract class BaseEntity {
+public abstract class BaseEntityWithUpdate {
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
   @EqualsAndHashCode.Include
@@ -21,12 +21,17 @@ public abstract class BaseEntity {
   @Column(name = "created_at")
   LocalDateTime createdAt;
 
-  @Column(name = "is_notified")
-  Boolean isNotified;
+  @Column(name = "updated_at")
+  LocalDateTime updatedAt;
 
   @PrePersist
   protected void onCreate() {
     this.createdAt = LocalDateTime.now();
-    this.isNotified = false;
+    this.updatedAt = null;
+  }
+
+  @PreUpdate
+  protected void onUpdate() {
+    this.updatedAt = LocalDateTime.now();
   }
 }

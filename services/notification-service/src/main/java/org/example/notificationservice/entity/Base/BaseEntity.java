@@ -1,4 +1,4 @@
-package org.example.interactionservice.entity.Base;
+package org.example.notificationservice.entity.Base;
 
 import jakarta.persistence.*;
 import lombok.AccessLevel;
@@ -21,12 +21,8 @@ public abstract class BaseEntity {
   @Column(name = "created_at")
   LocalDateTime createdAt;
 
-  @Column(name = "is_notified")
-  Boolean isNotified;
-
   @PrePersist
   protected void onCreate() {
     this.createdAt = LocalDateTime.now();
-    this.isNotified = false;
   }
 }

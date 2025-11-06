@@ -20,7 +20,7 @@ import java.util.Map;
 import java.util.Objects;
 
 @Component
-@Order(Ordered.HIGHEST_PRECEDENCE + 1)
+@Order(Ordered.HIGHEST_PRECEDENCE + 2)
 public class ApiKeyFilter implements GlobalFilter {
 
   private static final Logger log = LoggerFactory.getLogger(ApiKeyFilter.class);
@@ -45,6 +45,12 @@ public class ApiKeyFilter implements GlobalFilter {
     String path = request.getPath().value();
 
     if ("OPTIONS".equalsIgnoreCase(String.valueOf(request.getMethod()))) {
+      return chain.filter(exchange);
+    }
+
+    String upgradeHeader = request.getHeaders().getFirst("Upgrade");
+    if (upgradeHeader != null && "websocket".equalsIgnoreCase(upgradeHeader)) {
+      log.debug("Skipping API Key filter for WebSocket handshake: {}", request.getPath());
       return chain.filter(exchange);
     }
 

@@ -11,6 +11,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
 
 @Repository
@@ -54,4 +55,16 @@ public interface CommentRepository extends JpaRepository<Comment, Long> {
     """, nativeQuery = true)
   void decrementParentChildCount(@Param("id") Long id);
 
+  @Query(value = """
+    SELECT c FROM Comment c
+    WHERE c.isNotified = false
+    ORDER BY c.id
+    LIMIT 500
+    """)
+  List<Comment> findUnnotifiedBatch();
+
+  @Transactional
+  @Modifying
+  @Query("UPDATE Comment c SET c.isNotified = true WHERE c.id IN :ids")
+  void markAsNotified(List<Long> ids);
 }

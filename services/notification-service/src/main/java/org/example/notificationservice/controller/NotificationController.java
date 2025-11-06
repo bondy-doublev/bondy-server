@@ -1,38 +1,42 @@
 package org.example.notificationservice.controller;
 
-import org.example.notificationservice.service.NotificationService;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
+import lombok.AccessLevel;
+import lombok.RequiredArgsConstructor;
+import lombok.experimental.FieldDefaults;
+import org.example.commonweb.DTO.core.AppApiResponse;
+import org.example.notificationservice.config.security.ContextUser;
+import org.example.notificationservice.dto.PageRequestDto;
+import org.example.notificationservice.dto.request.CreateNotificationRequest;
+import org.example.notificationservice.entity.Notification;
+import org.example.notificationservice.service.interfaces.INotificationService;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
-
+@Tag(name = "Notification")
 @RestController
-@RequestMapping("/notification")
+@RequestMapping("/notifications")
+@RequiredArgsConstructor
+@FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class NotificationController {
+  INotificationService notificationService;
 
-    private final NotificationService notificationService;
+  @GetMapping("/me")
+  public AppApiResponse getNotifications(@ModelAttribute @Valid PageRequestDto filter) {
+    return new AppApiResponse(notificationService.getNotificationsByUserId(ContextUser.get().getUserId(), filter.toPageable()));
+  }
 
-    public NotificationController(NotificationService notificationService) {
-        this.notificationService = notificationService;
-    }
+  @PostMapping("/notify")
+  public AppApiResponse createNotification(@Valid @RequestBody CreateNotificationRequest request) {
+    Notification notification = notificationService.createNotification(request);
+    return new AppApiResponse(notification);
+  }
 
-    // Thêm notification
-    @GetMapping("/notify")
-    public String notify(@RequestParam("msg") String msg) {
-        notificationService.addNotification(msg);
-        return "Notification added: " + msg;
-    }
+  @PostMapping("/mark-read")
+  public AppApiResponse markAllAsRead() {
+    Long userId = ContextUser.get().getUserId();
+    notificationService.markRead(userId);
+    return new AppApiResponse();
+  }
 
-
-    // Lấy tất cả notification
-    @GetMapping("/notifications")
-    public List<String> list() {
-        return notificationService.getAllNotifications();
-    }
-
-    // Xóa tất cả notification
-    @DeleteMapping("/notifications")
-    public String clear() {
-        notificationService.clearAll();
-        return "All notifications cleared";
-    }
 }
