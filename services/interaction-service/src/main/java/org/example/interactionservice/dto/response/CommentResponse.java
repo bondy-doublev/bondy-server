@@ -14,6 +14,7 @@ public class CommentResponse {
   Long id;
   Long postId;
   Long parentId;
+  ParentCommentResponse parentComment;
   UserBasicResponse user;
   String contentText;
   Integer level;

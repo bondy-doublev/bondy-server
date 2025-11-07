@@ -28,6 +28,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @Service
 @RequiredArgsConstructor
@@ -105,10 +106,14 @@ public class CommentService implements ICommentService {
     }
 
     List<Long> userIds = comments.stream()
-      .map(Comment::getUserId)
+      .flatMap(c -> Stream.of(
+        c.getUserId(),
+        c.getParent() != null ? c.getParent().getUserId() : null
+      ))
       .filter(Objects::nonNull)
       .distinct()
       .toList();
+
 
     Map<Long, UserBasicResponse> userMap;
 
