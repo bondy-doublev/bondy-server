@@ -1,34 +1,30 @@
 package org.example.interactionservice.mapper;
 
 import org.example.interactionservice.dto.response.CommentResponse;
-import org.example.interactionservice.dto.response.ParentCommentResponse;
 import org.example.interactionservice.dto.response.UserBasicResponse;
 import org.example.interactionservice.entity.Comment;
 
+import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.stream.Collectors;
 
 public class CommentMapper {
 
   public static CommentResponse toCommentResponse(Comment comment, Map<Long, UserBasicResponse> userMap) {
-    ParentCommentResponse parentResponse = null;
-
-    if (comment.getParent() != null) {
-      Long parentUserId = comment.getParent().getUserId();
-      UserBasicResponse parentUser = userMap.get(parentUserId);
-
-      parentResponse = ParentCommentResponse.builder()
-        .parentId(comment.getParent().getId())
-        .userId(parentUserId)
-        .userName(parentUser != null ? parentUser.getFullName() : "Unknown User")
-        .build();
-    }
+    List<UserBasicResponse> mentionUsers = comment.getMentions() == null
+      ? List.of()
+      : comment.getMentions().stream()
+      .map(m -> userMap.get(m.getUserId()))
+      .filter(Objects::nonNull)
+      .collect(Collectors.toList());
 
     return CommentResponse.builder()
       .id(comment.getId())
       .postId(comment.getPost().getId())
       .parentId(comment.getParent() != null ? comment.getParent().getId() : null)
-      .parentComment(parentResponse)
       .user(userMap.get(comment.getUserId()))
+      .mentions(mentionUsers)
       .contentText(comment.getContentText())
       .level(comment.getLevel())
       .childCount(comment.getChildCount())
@@ -36,4 +32,5 @@ public class CommentMapper {
       .updatedAt(comment.getUpdatedAt())
       .build();
   }
+
 }

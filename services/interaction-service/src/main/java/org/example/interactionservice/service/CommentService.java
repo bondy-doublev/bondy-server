@@ -26,9 +26,7 @@ import org.springframework.stereotype.Service;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 @Service
 @RequiredArgsConstructor
@@ -106,14 +104,16 @@ public class CommentService implements ICommentService {
     }
 
     List<Long> userIds = comments.stream()
-      .flatMap(c -> Stream.of(
-        c.getUserId(),
-        c.getParent() != null ? c.getParent().getUserId() : null
-      ))
-      .filter(Objects::nonNull)
+      .flatMap(c -> {
+        List<Long> ids = new ArrayList<>();
+        if (c.getUserId() != null) ids.add(c.getUserId());
+        if (c.getMentions() != null) {
+          c.getMentions().forEach(m -> ids.add(m.getUserId()));
+        }
+        return ids.stream();
+      })
       .distinct()
       .toList();
-
 
     Map<Long, UserBasicResponse> userMap;
 
