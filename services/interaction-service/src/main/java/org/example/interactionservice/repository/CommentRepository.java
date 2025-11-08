@@ -59,9 +59,9 @@ public interface CommentRepository extends JpaRepository<Comment, Long> {
     SELECT c FROM Comment c
     WHERE c.isNotified = false
     ORDER BY c.id
-    LIMIT 500
+    LIMIT :limit
     """)
-  List<Comment> findUnnotifiedBatch();
+  List<Comment> findUnnotifiedBatch(@Param("limit") int limit);
 
   @Transactional
   @Modifying

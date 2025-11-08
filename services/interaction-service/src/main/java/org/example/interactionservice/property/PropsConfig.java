@@ -11,28 +11,36 @@ import org.springframework.stereotype.Component;
 @ConfigurationProperties(prefix = "app")
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class PropsConfig {
-    String environment;
-    final Gateway gateway = new Gateway();
-    final ApiKey apiKey = new ApiKey();
-    final Post post = new Post();
+  String environment;
+  final Gateway gateway = new Gateway();
+  final ApiKey apiKey = new ApiKey();
+  final Post post = new Post();
+  final Notify notify = new Notify();
 
-    @Data
-    public static class ApiKey {
-        private String header;
-        private String internal;
-    }
+  @Data
+  public static class ApiKey {
+    private String header;
+    private String internal;
+  }
 
-    @Data
-    public static class Gateway {
-        private String url;
-    }
+  @Data
+  public static class Gateway {
+    private String url;
+  }
 
-    @Data
-    public static class Post {
-        private int mediaLimit;
-        private int contentLimit;
-        private int imageLimit;
-        private int videoLimit;
-        private int tagLimit;
-    }
+  @Data
+  public static class Post {
+    private int mediaLimit;
+    private int contentLimit;
+    private int imageLimit;
+    private int videoLimit;
+    private int tagLimit;
+  }
+
+  @Data
+  public static class Notify {
+    private int maxBatch;
+    private int pollDelay;
+    private int maxLoop;
+  }
 }

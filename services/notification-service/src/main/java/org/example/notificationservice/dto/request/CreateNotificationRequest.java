@@ -27,7 +27,6 @@ public class CreateNotificationRequest {
   @NotBlank(message = "Actor name not null")
   private String actorName;
 
-  @NotBlank(message = "Actor avatar url not null")
   private String actorAvatarUrl;
 
   @NotNull(message = "Reference ID must not be null")
