@@ -44,4 +44,9 @@ public class Comment extends BaseEntityWithUpdate {
   @OneToMany(mappedBy = "parent", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
   @ToString.Exclude
   Set<Comment> comments = new HashSet<>();
+
+  @Builder.Default
+  @OneToMany(mappedBy = "comment", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+  @ToString.Exclude
+  Set<Mention> mentions = new HashSet<>();
 }

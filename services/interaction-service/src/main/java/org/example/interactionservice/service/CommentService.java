@@ -12,6 +12,7 @@ import org.example.interactionservice.dto.request.CreateCommentRequest;
 import org.example.interactionservice.dto.response.CommentResponse;
 import org.example.interactionservice.dto.response.UserBasicResponse;
 import org.example.interactionservice.entity.Comment;
+import org.example.interactionservice.entity.Mention;
 import org.example.interactionservice.entity.Post;
 import org.example.interactionservice.enums.CommentLevel;
 import org.example.interactionservice.mapper.CommentMapper;
@@ -23,10 +24,7 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -69,6 +67,23 @@ public class CommentService implements ICommentService {
       .contentText(request.getContent())
       .build();
 
+    if (!request.getMentionUserIds().isEmpty()) {
+      List<Mention> mentions = new ArrayList<>();
+
+      for (Long id : request.getMentionUserIds()) {
+        if (Objects.equals(id, userId)) continue;
+
+        Mention newMention = Mention.builder()
+          .comment(newComment)
+          .userId(id)
+          .build();
+
+        mentions.add(newMention);
+      }
+
+      newComment.setMentions(new HashSet<>(mentions));
+    }
+
     updates.add(newComment);
 
     if (parent != null) {
@@ -79,19 +94,28 @@ public class CommentService implements ICommentService {
     commentRepo.saveAll(updates);
     postRepo.updateCommentCount(postId, 1);
 
-    UserBasicResponse user = authClient.getBasicProfile(userId);
+    Set<Long> relatedUserIds = new HashSet<>();
+    relatedUserIds.add(newComment.getUserId());
 
-    return CommentResponse.builder()
-      .id(newComment.getId())
-      .postId(postId)
-      .user(user)
-      .parentId(parent != null ? parent.getId() : null)
-      .contentText(newComment.getContentText())
-      .level(level.getValue())
-      .childCount(newComment.getChildCount())
-      .createdAt(newComment.getCreatedAt())
-      .updatedAt(newComment.getUpdatedAt())
-      .build();
+    if (newComment.getMentions() != null && !newComment.getMentions().isEmpty()) {
+      relatedUserIds.addAll(
+        newComment.getMentions().stream()
+          .map(Mention::getUserId)
+          .toList()
+      );
+    }
+
+    Map<Long, UserBasicResponse> userMap;
+
+    if (!relatedUserIds.isEmpty()) {
+      List<UserBasicResponse> users = authClient.getBasicProfiles(relatedUserIds.stream().toList());
+      userMap = users.stream()
+        .collect(Collectors.toMap(UserBasicResponse::getId, u -> u));
+    } else {
+      userMap = Map.of();
+    }
+
+    return CommentMapper.toCommentResponse(newComment, userMap);
   }
 
   @Override
@@ -105,8 +129,14 @@ public class CommentService implements ICommentService {
     }
 
     List<Long> userIds = comments.stream()
-      .map(Comment::getUserId)
-      .filter(Objects::nonNull)
+      .flatMap(c -> {
+        List<Long> ids = new ArrayList<>();
+        if (c.getUserId() != null) ids.add(c.getUserId());
+        if (c.getMentions() != null) {
+          c.getMentions().forEach(m -> ids.add(m.getUserId()));
+        }
+        return ids.stream();
+      })
       .distinct()
       .toList();
 

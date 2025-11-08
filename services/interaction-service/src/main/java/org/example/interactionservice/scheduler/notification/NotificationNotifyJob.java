@@ -10,15 +10,17 @@ import org.example.interactionservice.client.AuthClient;
 import org.example.interactionservice.client.NotificationClient;
 import org.example.interactionservice.dto.request.CreateNotificationRequest;
 import org.example.interactionservice.dto.response.UserBasicResponse;
-import org.example.interactionservice.entity.Comment;
-import org.example.interactionservice.entity.Reaction;
+import org.example.interactionservice.property.PropsConfig;
 import org.example.interactionservice.repository.CommentRepository;
+import org.example.interactionservice.repository.MentionRepository;
 import org.example.interactionservice.repository.ReactionRepository;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
+import java.util.function.Consumer;
+import java.util.function.Supplier;
 
 @Slf4j
 @Component
@@ -28,74 +30,129 @@ public class NotificationNotifyJob {
 
   NotificationClient notificationClient;
   ReactionRepository reactionRepository;
-  AuthClient authClient;
-
   CommentRepository commentRepository;
+  MentionRepository mentionRepository;
+  AuthClient authClient;
+  PropsConfig propsConfig;
 
-  @Scheduled(fixedDelay = 10_000)
-  public void processReactionNotifications() {
-    while (true) {
-      List<Reaction> batch = reactionRepository.findUnnotifiedBatch();
-      if (batch.isEmpty()) break;
-
-      for (Reaction r : batch) {
-        try {
-          if (r.getPost().getUserId().equals(r.getUserId())) {
-            reactionRepository.markAsNotified(List.of(r.getId()));
-            continue;
-          }
-
-          UserBasicResponse actor = authClient.getBasicProfile(r.getUserId());
-          if (actor == null) continue;
-
-          HttpStatusCode status = notificationClient.notify(
-            CreateNotificationRequest.builder()
-              .userId(r.getPost().getUserId())
-              .type(NotificationType.LIKE)
-              .refType(RefType.POST)
-              .refId(r.getPost().getId())
-              .actorId(actor.getId())
-              .actorName(actor.getFullName())
-              .actorAvatarUrl(actor.getAvatarUrl())
-              .build()
-          );
-
-          if (status.is2xxSuccessful() || status.value() == 409) {
-            reactionRepository.markAsNotified(List.of(r.getId()));
-          } else {
-            log.warn("⚠️ Notification for reaction {} returned status {}", r.getId(), status);
-          }
-
-        } catch (Exception e) {
-          log.error("❌ Failed to send notification for {}", r.getId(), e);
-        }
-      }
-    }
+  // ✅ dùng chung config từ PropsConfig.Notify
+  int batchSize() {
+    return propsConfig.getNotify().getMaxBatch();
   }
 
-  @Scheduled(fixedDelay = 10_000)
-  public void processCommentNotifications() {
-    while (true) {
-      List<Comment> batch = commentRepository.findUnnotifiedBatch();
-      if (batch.isEmpty()) break;
+  int maxLoops() {
+    return propsConfig.getNotify().getMaxLoop();
+  }
 
-      for (Comment c : batch) {
+  /**
+   * Xử lý thông báo reaction (like)
+   */
+  @Scheduled(fixedDelayString = "#{@propsConfig.notify.pollDelay}")
+  public void processReactionNotifications() {
+    processBatch(
+      "reaction",
+      () -> reactionRepository.findUnnotifiedBatch(batchSize()),
+      r -> {
+        if (r.getPost().getUserId().equals(r.getUserId())) {
+          reactionRepository.markAsNotified(List.of(r.getId()));
+          return;
+        }
+
+        UserBasicResponse actor = authClient.getBasicProfile(r.getUserId());
+        if (actor == null) return;
+
+        HttpStatusCode status = notificationClient.notify(
+          CreateNotificationRequest.builder()
+            .userId(r.getPost().getUserId())
+            .type(NotificationType.LIKE)
+            .refType(RefType.POST)
+            .refId(r.getPost().getId())
+            .actorId(actor.getId())
+            .actorName(actor.getFullName())
+            .actorAvatarUrl(actor.getAvatarUrl())
+            .build()
+        );
+
+        if (status.is2xxSuccessful() || status.value() == 409) {
+          reactionRepository.markAsNotified(List.of(r.getId()));
+        } else {
+          log.warn("⚠️ Notification for reaction {} returned {}", r.getId(), status);
+        }
+      }
+    );
+  }
+
+  /**
+   * Xử lý thông báo comment
+   */
+  @Scheduled(fixedDelayString = "#{@propsConfig.notify.pollDelay}")
+  public void processCommentNotifications() {
+    processBatch(
+      "comment",
+      () -> commentRepository.findUnnotifiedBatch(batchSize()),
+      c -> {
+        if (c.getPost().getUserId().equals(c.getUserId())) {
+          commentRepository.markAsNotified(List.of(c.getId()));
+          return;
+        }
+
+        UserBasicResponse actor = authClient.getBasicProfile(c.getUserId());
+        if (actor == null) return;
+
+        HttpStatusCode status = notificationClient.notify(
+          CreateNotificationRequest.builder()
+            .userId(c.getPost().getUserId())
+            .type(NotificationType.COMMENT)
+            .refType(RefType.POST)
+            .refId(c.getPost().getId())
+            .actorId(actor.getId())
+            .actorName(actor.getFullName())
+            .actorAvatarUrl(actor.getAvatarUrl())
+            .build()
+        );
+
+        if (status.is2xxSuccessful() || status.value() == 409) {
+          commentRepository.markAsNotified(List.of(c.getId()));
+        } else {
+          log.warn("⚠️ Notification for comment {} returned {}", c.getId(), status);
+        }
+      }
+    );
+  }
+
+  /**
+   * Xử lý thông báo Mention (tag người khác trong post hoặc comment)
+   */
+  @Scheduled(fixedDelayString = "#{@propsConfig.notify.pollDelay}")
+  public void processMentionNotifications() {
+    processBatch(
+      "mention",
+      () -> mentionRepository.findUnnotifiedBatch(batchSize()),
+      m -> {
         try {
-          if (c.getPost().getUserId().equals(c.getUserId())) {
-            commentRepository.markAsNotified(List.of(c.getId()));
-            continue;
+          boolean isPostMention = m.getPost() != null;
+          Long targetUserId = isPostMention
+            ? m.getPost().getUserId()
+            : m.getComment().getUserId();
+
+          if (targetUserId.equals(m.getUserId())) {
+            mentionRepository.markAsNotified(List.of(m.getId()));
+            return;
           }
 
-          UserBasicResponse actor = authClient.getBasicProfile(c.getUserId());
+          UserBasicResponse actor = authClient.getBasicProfile(targetUserId);
+          if (actor == null) return;
 
-          if (actor == null) continue;
+          boolean isReplied = !isPostMention
+            && m.getComment().getParent() != null
+            && m.getComment().getParent().getUserId().equals(m.getUserId());
 
           HttpStatusCode status = notificationClient.notify(
             CreateNotificationRequest.builder()
-              .userId(c.getPost().getUserId())
-              .type(NotificationType.COMMENT)
-              .refType(RefType.POST)
-              .refId(c.getPost().getId())
+              .userId(m.getUserId())
+              .type(isReplied ? NotificationType.REPLY_COMMENT : NotificationType.MENTION)
+              .refType(isPostMention ? RefType.POST : RefType.COMMENT)
+              .refId(isPostMention ? m.getPost().getId() : m.getComment().getId())
               .actorId(actor.getId())
               .actorName(actor.getFullName())
               .actorAvatarUrl(actor.getAvatarUrl())
@@ -103,15 +160,33 @@ public class NotificationNotifyJob {
           );
 
           if (status.is2xxSuccessful() || status.value() == 409) {
-            commentRepository.markAsNotified(List.of(c.getId()));
+            mentionRepository.markAsNotified(List.of(m.getId()));
           } else {
-            log.warn("⚠️ Notification for comment {} returned status {}", c.getId(), status);
+            log.warn("⚠️ Notification for mention {} returned {}", m.getId(), status);
           }
-
         } catch (Exception e) {
-          log.error("❌ Failed to send notification for {}", c.getId(), e);
+          log.error("❌ Failed to send mention notification for {}", m.getId(), e);
+        }
+      }
+    );
+  }
+
+  /**
+   * Hàm xử lý batch chung cho tất cả loại job
+   */
+  private <T> void processBatch(String name, Supplier<List<T>> fetch, Consumer<T> handler) {
+    int loops = maxLoops();
+    while (loops-- > 0) {
+      List<T> batch = fetch.get();
+      if (batch.isEmpty()) break;
+      for (T item : batch) {
+        try {
+          handler.accept(item);
+        } catch (Exception e) {
+          log.error("❌ Error processing {} item: {}", name, item, e);
         }
       }
     }
   }
 }
+

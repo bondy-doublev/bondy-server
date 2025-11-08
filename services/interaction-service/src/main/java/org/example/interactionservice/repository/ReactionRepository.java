@@ -6,6 +6,7 @@ import org.example.interactionservice.entity.Reaction;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -21,9 +22,9 @@ public interface ReactionRepository extends JpaRepository<Reaction, Long> {
     SELECT r FROM Reaction r
     WHERE r.isNotified = false
     ORDER BY r.id
-    LIMIT 500
+    LIMIT :limit
     """)
-  List<Reaction> findUnnotifiedBatch();
+  List<Reaction> findUnnotifiedBatch(@Param("limit") int limit);
 
   @Transactional
   @Modifying

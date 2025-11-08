@@ -3,7 +3,7 @@ package org.example.commonweb.enums;
 public enum NotificationType {
   LIKE,
   COMMENT,
-  TAG,
+  MENTION,
   FRIEND_REQUEST,
   ACCEPT,
   SHARE,
