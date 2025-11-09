@@ -25,6 +25,15 @@ public class Conversation {
   @Column(name = "created_at")
   LocalDateTime createdAt;
 
+  @Column(name = "title")
+  String title; // tên nhóm
+
+  @Column(name = "avatar_url")
+  String avatarUrl;
+
+  @Column(name = "created_by")
+  Long createdBy;
+
   @PrePersist
   void onCreate() {
     if (createdAt == null) createdAt = LocalDateTime.now();

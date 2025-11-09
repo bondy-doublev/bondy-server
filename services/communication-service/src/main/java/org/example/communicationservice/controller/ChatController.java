@@ -6,6 +6,7 @@ import lombok.experimental.FieldDefaults;
 import org.example.commonweb.DTO.core.AppApiResponse;
 import org.example.communicationservice.config.security.ContextUser;
 import org.example.communicationservice.dto.request.AttachmentDto;
+import org.example.communicationservice.dto.request.CreateGroupRequest;
 import org.example.communicationservice.dto.request.EditMessageRequest;
 import org.example.communicationservice.dto.request.SendMessageRequest;
 import org.example.communicationservice.dto.response.*;
@@ -51,6 +52,14 @@ public class ChatController {
     List<ChatMessageResponse> data = p.getContent().stream().map(this::toResponse).toList();
     return new AppApiResponse(data);
   }
+
+  @PostMapping("/group")
+  public AppApiResponse createGroup(@RequestBody CreateGroupRequest req) {
+    Long selfId = ContextUser.get().getUserId();
+    Conversation group = chatService.createGroupConversation(selfId, req.getName(), req.getMemberIds());
+    return new AppApiResponse(group);
+  }
+
 
   @PostMapping("/messages")
   public AppApiResponse sendMessage(@RequestBody SendMessageRequest req) {

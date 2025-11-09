@@ -52,6 +52,26 @@ public class ChatService {
   }
 
   @Transactional
+  public Conversation createGroupConversation(Long creatorId, String name, List<Long> memberIds) {
+    Conversation c = new Conversation();
+    c.setType("GROUP");
+    c.setTitle(name);
+    c.setCreatedBy(creatorId);
+    conversationRepo.save(c);
+
+    List<ConversationParticipant> participants = new ArrayList<>();
+    participants.add(new ConversationParticipant(c, creatorId, "OWNER"));
+    for (Long id : memberIds) {
+      if (!id.equals(creatorId)) {
+        participants.add(new ConversationParticipant(c, id, "MEMBER"));
+      }
+    }
+    participantRepo.saveAll(participants);
+    return c;
+  }
+
+
+  @Transactional
   public Message sendMessage(Long conversationId, Long senderId, MessageType type, String content, List<MessageAttachment> attachments) {
     Conversation c = conversationRepo.findById(conversationId)
       .orElseThrow(() -> new IllegalArgumentException("Conversation not found"));

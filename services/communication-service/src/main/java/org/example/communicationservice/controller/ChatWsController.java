@@ -128,7 +128,7 @@ public class ChatWsController {
     for (Long uid : participantIds) {
       if (excludeUserId != null && excludeUserId.equals(uid)) {
         System.out.println("  ➤ Skip sender: " + uid);
-        continue;
+//        continue;
       }
 
       try {
@@ -141,8 +141,13 @@ public class ChatWsController {
 
         UnreadSummaryResponse summary = chatService.getUnreadSummary(uid);
         System.out.println("Sending to user " + uid + " via /queue/unread.summary");
-        messagingTemplate.convertAndSendToUser(String.valueOf(uid), "/queue/unread.summary", summary);
-        messagingTemplate.convertAndSend("user/queue/unread.summary", summary);
+        System.out.println("Summary" + summary.getTotal());
+        try {
+          messagingTemplate.convertAndSendToUser(String.valueOf(uid), "/queue/unread.summary",
+            summary);
+        } catch (Exception e) {
+          System.out.println("[notifyUnreadForConversation] " + e.getMessage());
+        }
       } catch (Exception e) {
         System.err.println("  ⚠️ Error sending unread update to user " + uid + ": " + e.getMessage());
         e.printStackTrace();

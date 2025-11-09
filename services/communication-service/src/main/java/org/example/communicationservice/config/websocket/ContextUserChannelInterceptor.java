@@ -43,6 +43,9 @@ public class ContextUserChannelInterceptor implements ChannelInterceptor {
         if (StringUtils.hasText(role)) attrs.put("X-User-Role", role);
         if (StringUtils.hasText(email)) attrs.put("X-Email", email);
       }
+      // 🔥 Thêm dòng log này để theo dõi
+      log.info("[WS] CONNECT userId={}, role={}, email={}", userIdStr, role, email);
+      
       ContextUser.set(Long.parseLong(userIdStr), role, email);
 
     } else {
