@@ -1,5 +1,6 @@
 package org.example.interactionservice.service;
 
+import jakarta.transaction.Transactional;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -7,6 +8,7 @@ import org.example.commonweb.enums.ErrorCode;
 import org.example.commonweb.exception.AppException;
 import org.example.interactionservice.client.UploadClient;
 import org.example.interactionservice.dto.request.CreatePostRequest;
+import org.example.interactionservice.dto.request.UpdatePostRequest;
 import org.example.interactionservice.dto.response.PostResponse;
 import org.example.interactionservice.entity.MediaAttachment;
 import org.example.interactionservice.entity.Mention;
@@ -97,6 +99,62 @@ public class PostService implements IPostService {
     }
 
     return postRepo.save(newPost).toPostResponse(null, null, false);
+  }
+
+  @Override
+  @Transactional
+  public PostResponse updatePost(Long userId, Long postId, UpdatePostRequest request) {
+    Post post = postRepo.findById(postId)
+      .orElseThrow(() -> new AppException(ErrorCode.ENTITY_NOT_FOUND, "Post with id " + postId + " not found"));
+
+    if (!post.getUserId().equals(userId)) {
+      throw new AppException(ErrorCode.BAD_REQUEST, "This post not belong to user");
+    }
+
+    if (request.getContent() != null) {
+      post.setContentText(request.getContent());
+    }
+
+    if (request.getIsPublic() != null) {
+      post.setVisibility(request.getIsPublic());
+    }
+
+    if (request.getRemoveAttachmentIds() != null && !request.getRemoveAttachmentIds().isEmpty()) {
+      Set<Long> ids = new HashSet<>(request.getRemoveAttachmentIds());
+      boolean anyRemoved = post.getMediaAttachments().removeIf(ma -> ids.contains(ma.getId()));
+      if (!anyRemoved && !ids.isEmpty()) {
+        throw new AppException(ErrorCode.BAD_REQUEST, "Some attachments do not belong to this post");
+      }
+      post.setMediaCount(post.getMediaAttachments().size());
+    }
+
+    if (request.getTagUserIds() != null) {
+      for (Long id : request.getTagUserIds()) {
+        if (Objects.equals(id, userId)) {
+          throw new AppException(ErrorCode.BAD_REQUEST, "Can not mention yourself");
+        }
+      }
+
+      post.getTags().clear();
+      if (!request.getTagUserIds().isEmpty()) {
+        Set<Mention> newTags = request.getTagUserIds().stream()
+          .map(uid -> Mention.builder()
+            .post(post)
+            .userId(uid)
+            .build())
+          .collect(Collectors.toSet());
+        post.getTags().addAll(newTags);
+      }
+    }
+
+    boolean noText = (post.getContentText() == null || post.getContentText().isBlank());
+    boolean noMedia = (post.getMediaAttachments() == null || post.getMediaAttachments().isEmpty());
+    if (noText && noMedia) {
+      throw new AppException(ErrorCode.BAD_REQUEST, "Post must contain text or media");
+    }
+
+    Post saved = postRepo.save(post);
+    return saved.toPostResponse(null, null, false);
   }
 
   @Override

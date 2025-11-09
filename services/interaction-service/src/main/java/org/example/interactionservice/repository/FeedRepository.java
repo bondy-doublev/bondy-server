@@ -40,7 +40,7 @@ public interface FeedRepository extends JpaRepository<Post, Long> {
       FROM (
           SELECT 'POST' AS type, p.id, p.user_id, p.created_at AS createdAt, NULL AS share_post_id, NULL AS owner_id
           FROM posts p
-          WHERE p.visibility = true AND p.user_id = :userId
+          WHERE p.user_id = :userId AND (p.visibility = true OR :isOwner = true)
           UNION ALL
           SELECT 'SHARE' AS type, s.id, s.user_id, s.created_at AS createdAt, s.post_id AS share_post_id, p2.user_id AS owner_id 
           FROM shares s
@@ -50,17 +50,22 @@ public interface FeedRepository extends JpaRepository<Post, Long> {
       ORDER BY createdAt DESC
       """,
     countQuery = """
-      SELECT COUNT(*) FROM (
-          SELECT id
-          FROM posts
-          WHERE visibility = true AND user_id = :userId
+       SELECT COUNT(*) FROM (
+          SELECT
+              p.id
+          FROM posts p
+          WHERE p.user_id = :userId
+            AND (p.visibility = true OR :isOwner = true)
+      
           UNION ALL
-          SELECT id
-          FROM shares
-          WHERE user_id = :userId
+      
+          SELECT
+              s.id
+          FROM shares s
+          WHERE s.user_id = :userId
       ) AS feed
       """,
     nativeQuery = true
   )
-  Page<Object[]> getWallFeed(@Param("userId") Long userId, Pageable pageable);
+  Page<Object[]> getWallFeed(@Param("userId") Long userId, Pageable pageable, @Param("isOwner") Boolean isOwner);
 }
