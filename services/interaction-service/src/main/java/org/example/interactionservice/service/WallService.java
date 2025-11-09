@@ -36,7 +36,7 @@ public class WallService implements IWallService {
 
   @Override
   public Page<FeedItemResponse> getWallFeed(Long userId, Pageable pageable) {
-    Page<Object[]> raw = feedRepo.getWallFeed(userId, pageable);
+    Page<Object[]> raw = feedRepo.getWallFeed(userId, pageable, ContextUser.get().getUserId().equals(userId));
     Set<Long> userIds = new HashSet<>();
     Set<Long> postIds = new HashSet<>();
 
