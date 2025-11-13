@@ -28,8 +28,11 @@ public class PostController {
     return new AppApiResponse(newPost);
   }
 
-  @PutMapping("/{postId}")
-  AppApiResponse updatePost(@PathVariable Long postId, @Valid @RequestBody UpdatePostRequest request) {
+  @PutMapping(value = "/{postId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+  AppApiResponse updatePost(
+    @PathVariable Long postId,
+    @Valid @ModelAttribute UpdatePostRequest request
+  ) {
     PostResponse updated = postService.updatePost(ContextUser.get().getUserId(), postId, request);
     return new AppApiResponse(updated);
   }

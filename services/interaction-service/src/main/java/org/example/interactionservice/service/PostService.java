@@ -111,48 +111,103 @@ public class PostService implements IPostService {
       throw new AppException(ErrorCode.BAD_REQUEST, "This post not belong to user");
     }
 
-    if (request.getContent() != null) {
-      post.setContentText(request.getContent());
-    }
+    // 1) Update content + visibility
+    if (request.getContent() != null) post.setContentText(request.getContent());
+    if (request.getIsPublic() != null) post.setVisibility(request.getIsPublic());
 
-    if (request.getIsPublic() != null) {
-      post.setVisibility(request.getIsPublic());
-    }
-
+    // 2) Xoá media cũ
+    int existingCount = post.getMediaAttachments() == null ? 0 : post.getMediaAttachments().size();
+    int removedCount = 0;
     if (request.getRemoveAttachmentIds() != null && !request.getRemoveAttachmentIds().isEmpty()) {
       Set<Long> ids = new HashSet<>(request.getRemoveAttachmentIds());
       boolean anyRemoved = post.getMediaAttachments().removeIf(ma -> ids.contains(ma.getId()));
       if (!anyRemoved && !ids.isEmpty()) {
         throw new AppException(ErrorCode.BAD_REQUEST, "Some attachments do not belong to this post");
       }
-      post.setMediaCount(post.getMediaAttachments().size());
+      removedCount = ids.size();
     }
 
+    // 3) Chuẩn bị validate thêm media mới
+    List<MultipartFile> newFiles = request.getNewMediaFiles();
+    int toAddCount = (newFiles == null) ? 0 : newFiles.size();
+
+    int afterCount = (existingCount - removedCount) + toAddCount;
+    if (afterCount < 0) afterCount = 0;
+
+    // media limit
+    int mediaLimit = props.getPost().getMediaLimit();
+    if (afterCount > mediaLimit) {
+      throw new AppException(ErrorCode.BAD_REQUEST,
+        "You can upload at most %d media files".formatted(mediaLimit));
+    }
+
+    // video limit
+    int existingVideoCount = (int) post.getMediaAttachments().stream()
+      .filter(ma -> MediaType.VIDEO.name().equalsIgnoreCase(ma.getType()))
+      .count();
+
+    int removedVideoCount = 0;
+    if (request.getRemoveAttachmentIds() != null && !request.getRemoveAttachmentIds().isEmpty()) {
+      Set<Long> ids = new HashSet<>(request.getRemoveAttachmentIds());
+      removedVideoCount = (int) post.getMediaAttachments().stream()
+        .filter(ma -> ids.contains(ma.getId()) && MediaType.VIDEO.name().equalsIgnoreCase(ma.getType()))
+        .count();
+    }
+
+    int newVideoCount = 0;
+    if (newFiles != null && !newFiles.isEmpty()) {
+      newVideoCount = (int) newFiles.stream().filter(this::isVideoFile).count();
+    }
+
+    int finalVideoCount = existingVideoCount - removedVideoCount + newVideoCount;
+    int videoLimit = props.getPost().getVideoLimit();
+    if (finalVideoCount > videoLimit) {
+      throw new AppException(ErrorCode.BAD_REQUEST,
+        "A post cannot contain more than %d video".formatted(videoLimit));
+    }
+
+    // 4) Upload media mới (nếu có)
+    if (newFiles != null && !newFiles.isEmpty()) {
+      List<String> mediaUrls = uploadClient.uploadLocalMultiple(newFiles);
+
+      Set<MediaAttachment> newAttachments = mediaUrls.stream()
+        .map(url -> MediaAttachment.builder()
+          .post(post)
+          .type(detectMediaType(url).name())
+          .url(url)
+          .build())
+        .collect(Collectors.toSet());
+
+      if (post.getMediaAttachments() == null) {
+        post.setMediaAttachments(new HashSet<>());
+      }
+      post.getMediaAttachments().addAll(newAttachments);
+    }
+
+    // 5) Update tags
     if (request.getTagUserIds() != null) {
       for (Long id : request.getTagUserIds()) {
         if (Objects.equals(id, userId)) {
           throw new AppException(ErrorCode.BAD_REQUEST, "Can not mention yourself");
         }
       }
-
       post.getTags().clear();
       if (!request.getTagUserIds().isEmpty()) {
         Set<Mention> newTags = request.getTagUserIds().stream()
-          .map(uid -> Mention.builder()
-            .post(post)
-            .userId(uid)
-            .build())
+          .map(uid -> Mention.builder().post(post).userId(uid).build())
           .collect(Collectors.toSet());
         post.getTags().addAll(newTags);
       }
     }
 
+    // 6) Không cho post rỗng
     boolean noText = (post.getContentText() == null || post.getContentText().isBlank());
     boolean noMedia = (post.getMediaAttachments() == null || post.getMediaAttachments().isEmpty());
     if (noText && noMedia) {
       throw new AppException(ErrorCode.BAD_REQUEST, "Post must contain text or media");
     }
 
+    post.setMediaCount(post.getMediaAttachments() == null ? 0 : post.getMediaAttachments().size());
     Post saved = postRepo.save(post);
     return saved.toPostResponse(null, null, false);
   }
