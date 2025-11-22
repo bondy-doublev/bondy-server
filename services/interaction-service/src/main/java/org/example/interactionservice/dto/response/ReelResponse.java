@@ -23,4 +23,6 @@ public class ReelResponse {
   List<Long> customAllowedUserIds;
   LocalDateTime createdAt;
   LocalDateTime updatedAt;
+  Boolean isRead;
+  List<UserBasicResponse> readUsers;
 }

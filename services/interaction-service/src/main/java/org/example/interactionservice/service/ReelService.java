@@ -12,8 +12,10 @@ import org.example.interactionservice.dto.response.ReelResponse;
 import org.example.interactionservice.dto.response.UserBasicResponse;
 import org.example.interactionservice.entity.Reel;
 import org.example.interactionservice.entity.ReelAllowedUser;
+import org.example.interactionservice.entity.ReelReadUser;
 import org.example.interactionservice.enums.ReelVisibility;
 import org.example.interactionservice.repository.ReelAllowedUserRepository;
+import org.example.interactionservice.repository.ReelReadUserRepository;
 import org.example.interactionservice.repository.ReelRepository;
 import org.springframework.stereotype.Service;
 
@@ -27,6 +29,8 @@ public class ReelService {
 
   private final ReelRepository reelRepository;
   private final ReelAllowedUserRepository reelAllowedUserRepository;
+  private final ReelReadUserRepository reelReadUserRepository;
+
   private final AuthClient authClient;
   private final FriendshipService friendshipService;
 
@@ -51,7 +55,6 @@ public class ReelService {
 
     Reel saved = reelRepository.save(reel);
 
-    // Nếu CUSTOM -> insert mapping
     if (request.getVisibilityType() == ReelVisibility.CUSTOM && request.getCustomAllowedUserIds() != null) {
       List<ReelAllowedUser> entities = request.getCustomAllowedUserIds().stream()
         .distinct()
@@ -65,7 +68,7 @@ public class ReelService {
     }
 
     UserBasicResponse owner = authClient.getBasicProfile(saved.getUserId());
-    return saved.toResponse(owner, true);
+    return saved.toResponse(owner, true, false, List.of());
   }
 
   @Transactional
@@ -90,7 +93,6 @@ public class ReelService {
 
     reel.setVisibilityType(request.getVisibilityType());
 
-    // Clear old custom list
     reelAllowedUserRepository.deleteByReelId(reel.getId());
     reel.getAllowedUsers().clear();
 
@@ -110,83 +112,71 @@ public class ReelService {
     reelRepository.save(reel);
 
     UserBasicResponse owner = authClient.getBasicProfile(reel.getUserId());
-    return reel.toResponse(owner, true);
+    return reel.toResponse(owner, true, false, List.of());
   }
 
-  /**
-   * Lấy danh sách Reel mà viewer có thể thấy (của tất cả bạn bè hoặc của một user cụ thể).
-   * Nếu ownerId != null -> chỉ lấy reel của user đó nếu viewer có quyền.
-   * Nếu ownerId == null -> lấy reels của toàn bộ friends của viewer.
-   */
-  @Transactional()
+  @Transactional
   public List<ReelResponse> getVisibleReels(Long viewerId, Long ownerId) {
     LocalDateTime now = LocalDateTime.now();
 
-    // 1. Lấy danh sách bạn bè của viewer
-    List<FriendshipResponse> friendships = friendshipService.getFriends(viewerId);
-    Set<Long> friendIds = friendships.stream()
-      .flatMap(f -> Set.of(f.getSenderId(), f.getReceiverId()).stream())
-      .filter(id -> !id.equals(viewerId))
-      .collect(Collectors.toSet());
+    Set<Long> friendIds = getFriendIds(viewerId);
+    Set<Long> targetOwners = resolveTargetOwners(viewerId, ownerId, friendIds);
+    if (targetOwners.isEmpty()) return List.of();
 
-    // 2. Xác định tập owners mục tiêu
-    Set<Long> targetOwners = new HashSet<>();
-    if (ownerId != null) {
-      if (Objects.equals(ownerId, viewerId) || friendIds.contains(ownerId)) {
-        targetOwners.add(ownerId);
-      } else {
-        return List.of(); // Không phải bạn cũng không phải chính mình
-      }
-    } else {
-      targetOwners.addAll(friendIds);
-      targetOwners.add(viewerId); // để thấy PRIVATE của mình
-    }
-
-    if (targetOwners.isEmpty()) {
-      return List.of();
-    }
-
-    // 3. Lấy reels sống của toàn bộ owners (có thể thêm method mới trong repository)
-    // Nếu chưa có method findAliveByOwnerIn thì tạm loop như cũ:
     List<Reel> reels = new ArrayList<>();
     for (Long oId : targetOwners) {
       reels.addAll(reelRepository.findAliveByOwner(oId, now));
     }
 
-    // 4. Filter visibility
     List<Reel> visibleReels = reels.stream()
-      .filter(r -> !r.getIsDeleted()) // vì query đã đảm bảo expiresAt > now
-      .filter(r -> {
-        if (Objects.equals(r.getUserId(), viewerId)) {
-          return true; // chủ sở hữu luôn thấy
-        }
-        boolean isFriend = friendIds.contains(r.getUserId());
-        return switch (r.getVisibilityType()) {
-          case PUBLIC -> isFriend; // theo logic bạn yêu cầu
-          case PRIVATE -> false;
-          case CUSTOM -> isFriend && r.getAllowedUsers()
-            .stream()
-            .anyMatch(au -> Objects.equals(au.getAllowedUserId(), viewerId));
-        };
-      })
+      .filter(r -> !r.getIsDeleted())
+      .filter(r -> canViewReelIgnoringExpiry(r, viewerId, friendIds)) // alive variant also valid
       .toList();
 
-    if (visibleReels.isEmpty()) {
-      return List.of();
-    }
+    if (visibleReels.isEmpty()) return List.of();
 
-    // 5. Lấy thông tin owner
-    Set<Long> ownerIds = visibleReels.stream()
-      .map(Reel::getUserId)
-      .collect(Collectors.toSet());
+    Map<Long, UserBasicResponse> ownerMap = loadOwnerProfiles(visibleReels);
 
-    List<UserBasicResponse> owners = authClient.getBasicProfiles(new ArrayList<>(ownerIds));
-    Map<Long, UserBasicResponse> ownerMap = owners.stream()
-      .collect(Collectors.toMap(UserBasicResponse::getId, u -> u));
+    List<Long> reelIds = visibleReels.stream().map(Reel::getId).toList();
+    Map<Long, List<Long>> readIdMap = buildReadUserIdMap(reelIds);
+    Map<Long, List<UserBasicResponse>> readUsersProfileMap = buildReadUserProfileMap(readIdMap);
 
-    // 6. Map response
     return visibleReels.stream()
-      .map(r -> r.toResponse(ownerMap.get(r.getUserId()), true))
+      .map(r -> {
+        List<UserBasicResponse> readUsers = readUsersProfileMap.getOrDefault(r.getId(), List.of());
+        boolean isRead = readUsers.stream().anyMatch(u -> Objects.equals(u.getId(), viewerId));
+        return r.toResponse(ownerMap.get(r.getUserId()), true, isRead, readUsers);
+      })
+      .toList();
+  }
+
+  @Transactional
+  public List<ReelResponse> getAllReels(Long viewerId, Long ownerId) {
+    Set<Long> friendIds = getFriendIds(viewerId);
+    Set<Long> targetOwners = resolveTargetOwners(viewerId, ownerId, friendIds);
+    if (targetOwners.isEmpty()) return List.of();
+
+    List<Reel> reels = reelRepository.findAllNotDeletedByOwnerIn(new ArrayList<>(targetOwners));
+    if (reels.isEmpty()) return List.of();
+
+    List<Reel> visibleReels = reels.stream()
+      .filter(r -> canViewReelIgnoringExpiry(r, viewerId, friendIds))
+      .toList();
+
+    if (visibleReels.isEmpty()) return List.of();
+
+    Map<Long, UserBasicResponse> ownerMap = loadOwnerProfiles(visibleReels);
+
+    List<Long> reelIds = visibleReels.stream().map(Reel::getId).toList();
+    Map<Long, List<Long>> readIdMap = buildReadUserIdMap(reelIds);
+    Map<Long, List<UserBasicResponse>> readUsersProfileMap = buildReadUserProfileMap(readIdMap);
+
+    return visibleReels.stream()
+      .map(r -> {
+        List<UserBasicResponse> readUsers = readUsersProfileMap.getOrDefault(r.getId(), List.of());
+        boolean isRead = readUsers.stream().anyMatch(u -> Objects.equals(u.getId(), viewerId));
+        return r.toResponse(ownerMap.get(r.getUserId()), true, isRead, readUsers);
+      })
       .toList();
   }
 
@@ -197,15 +187,11 @@ public class ReelService {
     if (reel.isExpired() || reel.getIsDeleted()) {
       throw new AppException(ErrorCode.ENTITY_NOT_FOUND, "Reel is expired");
     }
-    // Optional: kiểm tra viewer có quyền xem trước khi count
+    // (Optional) validate viewer can see before counting
     reel.setViewCount(reel.getViewCount() + 1);
     reelRepository.save(reel);
   }
 
-  /**
-   * Cleanup hoặc mark reels đã hết hạn (có thể gọi từ scheduler).
-   * Ở đây chỉ set isDeleted = true cho đơn giản.
-   */
   @Transactional
   public int expireReelsJob() {
     LocalDateTime now = LocalDateTime.now();
@@ -215,19 +201,121 @@ public class ReelService {
     return expired.size();
   }
 
+  @Transactional
+  public void markRead(Long reelId, Long viewerId) {
+    Reel reel = reelRepository.findById(reelId)
+      .orElseThrow(() -> new AppException(ErrorCode.ENTITY_NOT_FOUND, "Reel not found"));
+    if (reel.getIsDeleted()) {
+      throw new AppException(ErrorCode.ENTITY_NOT_FOUND, "Reel deleted");
+    }
+    if (!canViewReelIgnoringExpiry(reel, viewerId)) {
+      throw new AppException(ErrorCode.UNAUTHORIZED, "No permission to read this reel");
+    }
+    boolean alreadyRead = !reelReadUserRepository.findByReelIdAndUserId(reelId, viewerId).isEmpty();
+    if (!alreadyRead) {
+      ReelReadUser readUser = ReelReadUser.builder()
+        .reel(reel)
+        .userId(viewerId)
+        .readAt(LocalDateTime.now())
+        .build();
+      reelReadUserRepository.save(readUser);
+    }
+  }
+
+  /* ===================== Helpers ===================== */
+
   private void validateCreateRequest(CreateReelRequest request) {
     if (request.getUserId() == null) {
-      throw new IllegalArgumentException("userId không được null");
+      throw new IllegalArgumentException("userId must not be null");
     }
     if (request.getVideoUrl() == null || request.getVideoUrl().isBlank()) {
-      throw new IllegalArgumentException("videoUrl không được trống");
+      throw new IllegalArgumentException("videoUrl must not be blank");
     }
     if (request.getVisibilityType() == null) {
-      throw new IllegalArgumentException("visibilityType không được null");
+      throw new IllegalArgumentException("visibilityType must not be null");
     }
     if (request.getVisibilityType() == ReelVisibility.CUSTOM &&
       (request.getCustomAllowedUserIds() == null || request.getCustomAllowedUserIds().isEmpty())) {
-      throw new IllegalArgumentException("CUSTOM phải có danh sách customAllowedUserIds");
+      throw new IllegalArgumentException("CUSTOM visibility requires customAllowedUserIds list");
     }
+  }
+
+  private Set<Long> getFriendIds(Long viewerId) {
+    List<FriendshipResponse> friendships = friendshipService.getFriends(viewerId);
+    return friendships.stream()
+      .flatMap(f -> Set.of(f.getSenderId(), f.getReceiverId()).stream())
+      .filter(id -> !id.equals(viewerId))
+      .collect(Collectors.toSet());
+  }
+
+  private Set<Long> resolveTargetOwners(Long viewerId, Long ownerId, Set<Long> friendIds) {
+    Set<Long> targetOwners = new HashSet<>();
+    if (ownerId != null) {
+      if (Objects.equals(ownerId, viewerId) || friendIds.contains(ownerId)) {
+        targetOwners.add(ownerId);
+      }
+    } else {
+      targetOwners.addAll(friendIds);
+      targetOwners.add(viewerId);
+    }
+    return targetOwners;
+  }
+
+  private Map<Long, UserBasicResponse> loadOwnerProfiles(List<Reel> reels) {
+    Set<Long> ownerIds = reels.stream().map(Reel::getUserId).collect(Collectors.toSet());
+    List<UserBasicResponse> owners = authClient.getBasicProfiles(new ArrayList<>(ownerIds));
+    return owners.stream().collect(Collectors.toMap(UserBasicResponse::getId, u -> u));
+  }
+
+  private Map<Long, List<Long>> buildReadUserIdMap(List<Long> reelIds) {
+    if (reelIds.isEmpty()) return Collections.emptyMap();
+    List<Object[]> rows = reelReadUserRepository.findAllReadUsersByReelIds(reelIds);
+    Map<Long, List<Long>> map = new HashMap<>();
+    for (Object[] row : rows) {
+      Long reelId = (Long) row[0];
+      Long userId = (Long) row[1];
+      map.computeIfAbsent(reelId, k -> new ArrayList<>()).add(userId);
+    }
+    map.replaceAll((k, v) -> List.copyOf(v));
+    return map;
+  }
+
+  private Map<Long, List<UserBasicResponse>> buildReadUserProfileMap(Map<Long, List<Long>> readIdMap) {
+    Set<Long> allIds = readIdMap.values().stream()
+      .flatMap(List::stream)
+      .collect(Collectors.toSet());
+    if (allIds.isEmpty()) {
+      return Collections.emptyMap();
+    }
+    List<UserBasicResponse> profiles = authClient.getBasicProfiles(new ArrayList<>(allIds));
+    Map<Long, UserBasicResponse> profileMap = profiles.stream()
+      .collect(Collectors.toMap(UserBasicResponse::getId, p -> p));
+
+    Map<Long, List<UserBasicResponse>> result = new HashMap<>();
+    readIdMap.forEach((reelId, userIds) -> {
+      List<UserBasicResponse> users = userIds.stream()
+        .map(profileMap::get)
+        .filter(Objects::nonNull)
+        .toList();
+      result.put(reelId, users);
+    });
+    return result;
+  }
+
+  // Single method variant with precomputed friendIds
+  private boolean canViewReelIgnoringExpiry(Reel reel, Long viewerId, Set<Long> friendIds) {
+    if (Objects.equals(reel.getUserId(), viewerId)) return true;
+    boolean isFriend = friendIds.contains(reel.getUserId());
+    return switch (reel.getVisibilityType()) {
+      case PUBLIC -> isFriend;
+      case PRIVATE -> false;
+      case CUSTOM -> isFriend &&
+        reel.getAllowedUsers().stream().anyMatch(au -> Objects.equals(au.getAllowedUserId(), viewerId));
+    };
+  }
+
+  // Convenience variant when friendIds not precomputed
+  private boolean canViewReelIgnoringExpiry(Reel reel, Long viewerId) {
+    return canViewReelIgnoringExpiry(reel, viewerId, getFriendIds(viewerId));
   }
 }

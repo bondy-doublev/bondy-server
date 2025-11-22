@@ -42,4 +42,20 @@ public interface ReelRepository extends JpaRepository<Reel, Long> {
          AND r.expiresAt <= :now
     """)
   List<Reel> findExpired(LocalDateTime now);
+
+  @Query("""
+      SELECT r FROM Reel r
+       WHERE r.userId = :ownerId
+         AND r.isDeleted = FALSE
+       ORDER BY r.createdAt DESC
+    """)
+  List<Reel> findAllNotDeletedByOwner(Long ownerId);
+
+  @Query("""
+      SELECT r FROM Reel r
+       WHERE r.userId IN :ownerIds
+         AND r.isDeleted = FALSE
+       ORDER BY r.createdAt DESC
+    """)
+  List<Reel> findAllNotDeletedByOwnerIn(List<Long> ownerIds);
 }

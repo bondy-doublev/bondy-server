@@ -69,6 +69,30 @@ public class Reel extends BaseEntityWithUpdate {
       .build();
   }
 
+  public ReelResponse toResponse(UserBasicResponse owner,
+                                 boolean visibleForRequester,
+                                 boolean isRead,
+                                 java.util.List<UserBasicResponse> readUsers) {
+    return ReelResponse.builder()
+      .id(this.getId())
+      .videoUrl(this.getVideoUrl())
+      .visibilityType(this.getVisibilityType())
+      .expiresAt(this.getExpiresAt())
+      .viewCount(this.getViewCount())
+      .owner(owner)
+      .visible(visibleForRequester)
+      .customAllowedUserIds(
+        this.getAllowedUsers().stream()
+          .map(ReelAllowedUser::getAllowedUserId)
+          .collect(Collectors.toList())
+      )
+      .createdAt(this.getCreatedAt())
+      .updatedAt(this.getUpdatedAt())
+      .isRead(isRead)
+      .readUsers(readUsers)
+      .build();
+  }
+
   public boolean isExpired() {
     return LocalDateTime.now().isAfter(this.expiresAt);
   }
