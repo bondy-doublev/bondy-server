@@ -22,6 +22,13 @@ import org.springframework.web.bind.annotation.*;
 public class PostController {
   IPostService postService;
 
+  @GetMapping("/{postId}")
+  AppApiResponse getPost(@PathVariable Long postId) {
+    Long currentUserId = ContextUser.get().getUserId();
+    PostResponse post = postService.getPost(currentUserId, postId);
+    return new AppApiResponse(post);
+  }
+
   @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
   AppApiResponse createPost(@ModelAttribute @Valid CreatePostRequest request) {
     PostResponse newPost = postService.createPost(ContextUser.get().getUserId(), request);

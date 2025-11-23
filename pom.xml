@@ -118,6 +118,7 @@
     <module>services/notification-service</module>
     <module>services/interaction-service</module>
     <module>services/communication-service</module>
+    <module>services/moderation-service</module>
   </modules>
 
   <!-- Quản lý plugin chung, con tự “kích hoạt” khi cần -->

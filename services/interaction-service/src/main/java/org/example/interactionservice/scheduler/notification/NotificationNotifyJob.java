@@ -70,6 +70,7 @@ public class NotificationNotifyJob {
             .actorId(actor.getId())
             .actorName(actor.getFullName())
             .actorAvatarUrl(actor.getAvatarUrl())
+            .redirectId(r.getPost().getId())
             .build()
         );
 
@@ -108,6 +109,7 @@ public class NotificationNotifyJob {
             .actorId(actor.getId())
             .actorName(actor.getFullName())
             .actorAvatarUrl(actor.getAvatarUrl())
+            .redirectId(c.getPost().getId())
             .build()
         );
 
@@ -156,6 +158,7 @@ public class NotificationNotifyJob {
               .actorId(actor.getId())
               .actorName(actor.getFullName())
               .actorAvatarUrl(actor.getAvatarUrl())
+              .redirectId(m.getPost().getId())
               .build()
           );
 

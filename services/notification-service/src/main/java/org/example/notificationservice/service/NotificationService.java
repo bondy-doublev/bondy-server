@@ -91,6 +91,7 @@ public class NotificationService implements INotificationService {
       .type(req.getType())
       .refType(req.getRefType())
       .refId(req.getRefId())
+      .redirectId(req.getRedirectId())
       .isRead(false)
       .build();
   }

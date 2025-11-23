@@ -25,4 +25,6 @@ public class CreateNotificationRequest {
   private NotificationType type;
 
   private RefType refType;
+
+  private Long redirectId;
 }
