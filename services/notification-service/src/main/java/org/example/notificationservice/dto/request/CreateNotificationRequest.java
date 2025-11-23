@@ -38,4 +38,6 @@ public class CreateNotificationRequest {
 
   @NotNull(message = "Reference type must not be null")
   private RefType refType;
+
+  private Long redirectId;
 }

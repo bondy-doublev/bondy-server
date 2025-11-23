@@ -5,6 +5,8 @@ import org.example.interactionservice.dto.request.UpdatePostRequest;
 import org.example.interactionservice.dto.response.PostResponse;
 
 public interface IPostService {
+  PostResponse getPost(Long userId, Long postId);
+
   PostResponse createPost(Long ownerId, CreatePostRequest request);
 
   PostResponse updatePost(Long userId, Long postId, UpdatePostRequest request);

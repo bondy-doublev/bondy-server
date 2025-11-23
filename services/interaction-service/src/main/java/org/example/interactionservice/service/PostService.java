@@ -6,10 +6,12 @@ import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import org.example.commonweb.enums.ErrorCode;
 import org.example.commonweb.exception.AppException;
+import org.example.interactionservice.client.AuthClient;
 import org.example.interactionservice.client.UploadClient;
 import org.example.interactionservice.dto.request.CreatePostRequest;
 import org.example.interactionservice.dto.request.UpdatePostRequest;
 import org.example.interactionservice.dto.response.PostResponse;
+import org.example.interactionservice.dto.response.UserBasicResponse;
 import org.example.interactionservice.entity.MediaAttachment;
 import org.example.interactionservice.entity.Mention;
 import org.example.interactionservice.entity.Post;
@@ -34,6 +36,50 @@ public class PostService implements IPostService {
   ShareRepository shareRepo;
 
   UploadClient uploadClient;
+  AuthClient authClient;
+
+  @Override
+  public PostResponse getPost(Long userId, Long postId) {
+    // 1. Lấy post
+    Post post = postRepo.findById(postId)
+      .orElseThrow(() -> new AppException(
+        ErrorCode.ENTITY_NOT_FOUND,
+        "Post with id " + postId + " not found"
+      ));
+
+    // Nếu muốn check quyền xem (post private mà không phải owner) thì thêm ở đây
+    if (Boolean.FALSE.equals(post.getVisibility()) && !post.getUserId().equals(userId)) {
+      throw new AppException(ErrorCode.FORBIDDEN, "You are not allowed to view this post");
+    }
+
+    // 2. Gom tất cả userId cần để lấy profile (owner + tagged users)
+    Set<Long> userIds = new HashSet<>();
+    userIds.add(post.getUserId());
+    post.getTags().forEach(tag -> userIds.add(tag.getUserId()));
+
+    // 3. Call auth-service lấy basic profile
+    Map<Long, UserBasicResponse> userMap = authClient
+      .getBasicProfiles(userIds.stream().toList())
+      .stream()
+      .collect(Collectors.toMap(UserBasicResponse::getId, u -> u));
+
+    UserBasicResponse owner = userMap.get(post.getUserId());
+
+    // 4. Map tagged users
+    List<UserBasicResponse> taggedUsers = post.getTags().stream()
+      .map(Mention::getUserId)
+      .map(userMap::get)
+      .filter(Objects::nonNull)
+      .toList();
+
+    // 5. Xem user hiện tại đã react chưa
+    boolean reacted = post.getReactions().stream()
+      .anyMatch(r -> Objects.equals(r.getUserId(), userId));
+
+    // 6. Trả về PostResponse giống logic trong getFeed
+    return post.toPostResponse(owner, taggedUsers, reacted);
+  }
+
 
   @Override
   public PostResponse createPost(Long ownerId, CreatePostRequest request) {
