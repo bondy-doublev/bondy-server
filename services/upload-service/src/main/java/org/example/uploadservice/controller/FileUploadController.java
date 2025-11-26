@@ -110,4 +110,46 @@ public class FileUploadController {
       throw new AppException(ErrorCode.IO_ERROR, e.getMessage());
     }
   }
+
+  // -------------------- Upload 1 video Cloudinary --------------------
+  @Operation(summary = "Upload single video (Cloudinary)", description = "Upload one video file and store it on Cloudinary.")
+  @ApiResponses({
+    @ApiResponse(responseCode = "200", description = "Video uploaded successfully",
+      content = @Content(schema = @Schema(implementation = String.class))),
+    @ApiResponse(responseCode = "400", description = "Upload failed")
+  })
+  @PostMapping(value = "/cloudinary/video", consumes = "multipart/form-data")
+  public AppApiResponse uploadVideoCloudinary(
+    @Parameter(description = "Video file to upload", required = true)
+    @RequestParam("video") MultipartFile video
+  ) {
+    try {
+      String url = fileUploadService.uploadVideoCloudinary(video);
+      return new AppApiResponse(url);
+    } catch (Exception e) {
+      throw new AppException(ErrorCode.IO_ERROR, e.getMessage());
+    }
+  }
+
+
+  // -------------------- Upload nhiều video Cloudinary --------------------
+  @Operation(summary = "Upload multiple videos (Cloudinary)", description = "Upload multiple video files and store them on Cloudinary.")
+  @ApiResponses({
+    @ApiResponse(responseCode = "200", description = "Videos uploaded successfully",
+      content = @Content(array = @ArraySchema(schema = @Schema(implementation = String.class)))),
+    @ApiResponse(responseCode = "400", description = "Upload failed")
+  })
+  @PostMapping(value = "/cloudinary/video/multiple", consumes = "multipart/form-data")
+  public AppApiResponse uploadMultipleVideosCloudinary(
+    @Parameter(description = "Video files to upload", required = true)
+    @RequestParam("videos") List<MultipartFile> videos
+  ) {
+    try {
+      List<String> urls = fileUploadService.uploadMultipleVideosCloudinary(videos);
+      return new AppApiResponse(urls);
+    } catch (Exception e) {
+      throw new AppException(ErrorCode.IO_ERROR, e.getMessage());
+    }
+  }
+
 }
