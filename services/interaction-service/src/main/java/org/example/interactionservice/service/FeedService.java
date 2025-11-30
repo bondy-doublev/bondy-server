@@ -160,31 +160,32 @@ public class FeedService implements IFeedService {
     Map<Long, Post> postMap = posts
       .stream().collect(Collectors.toMap(Post::getId, p -> p));
 
-
-// PART 2: GỌI PYTHON LẤY RECOMMEND
+    // ============= PART 2: GỌI PYTHON LẤY RECOMMEND =============
     Long currentUserId = ContextUser.get().getUserId();
+    int offset = pageable.getPageNumber() * pageable.getPageSize();
+    int limit = pageable.getPageSize();
 
-    List<RecommendedPost> rec = recommendationClient.getRecommendedPosts(currentUserId, 5);
+    // Lấy danh sách recommend đã sort theo score
+    List<RecommendedPost> rec = recommendationClient.getRecommendedPosts(currentUserId, offset, limit);
 
     List<FeedItemResponse> recommendedFeed = new ArrayList<>();
-
     if (rec != null && !rec.isEmpty()) {
-      List<Long> recPostIds = rec.stream().map(RecommendedPost::getId).toList();
+      // Map Post từ database theo id
+      Map<Long, Post> recPostMap = postRepo.findAllById(
+        rec.stream().map(RecommendedPost::getId).toList()
+      ).stream().collect(Collectors.toMap(Post::getId, p -> p));
 
-      List<Post> recPosts = postRepo.findAllById(recPostIds);
+      // Map user cho owner của các recommend post
+      List<Long> recUserIds = recPostMap.values().stream().map(Post::getUserId).toList();
+      Map<Long, UserBasicResponse> recUserMap = authClient.getBasicProfiles(recUserIds)
+        .stream().collect(Collectors.toMap(UserBasicResponse::getId, u -> u));
 
-      // Lấy userId của owner post
-      List<Long> recUserIds = recPosts.stream().map(Post::getUserId).toList();
+      // Build list giữ nguyên thứ tự (score giảm dần)
+      for (RecommendedPost r : rec) {
+        Post p = recPostMap.get(r.getId());
+        if (p == null) continue;
 
-      // Dùng HÀM CŨ, KHÔNG TỰ CHẾ
-      Map<Long, UserBasicResponse> recUserMap =
-        authClient.getBasicProfiles(recUserIds)
-          .stream().collect(Collectors.toMap(UserBasicResponse::getId, u -> u));
-
-      // Convert giữ nguyên JSON FORMAT
-      for (Post p : recPosts) {
         UserBasicResponse owner = recUserMap.get(p.getUserId());
-
         FeedItemResponse item = FeedItemResponse.builder()
           .type("POST")
           .id(p.getId())
@@ -196,13 +197,13 @@ public class FeedService implements IFeedService {
               false            // isLiked
             )
           )
+          .score(r.getScore())             // <--- truyền score đúng từ Python
           .createdAt(p.getCreatedAt())
           .build();
 
         recommendedFeed.add(item);
       }
     }
-
 
     // ============= PART 3: BUILD FEED GỐC NHƯ CŨ =============
     List<FeedItemResponse> originalFeed = raw.stream().map(row -> {
@@ -238,7 +239,6 @@ public class FeedService implements IFeedService {
           .build();
       } else {
         Post sharedPost = sharedPostId != null ? postMap.get(sharedPostId) : null;
-
         if (sharedPost == null) {
           return FeedItemResponse.builder()
             .type("SHARE")
@@ -250,7 +250,6 @@ public class FeedService implements IFeedService {
         }
 
         UserBasicResponse sharedOwner = userMap.get(sharedPost.getUserId());
-
         List<UserBasicResponse> taggedUsers = sharedPost.getTags().stream()
           .map(Mention::getUserId)
           .map(userMap::get)
@@ -272,14 +271,12 @@ public class FeedService implements IFeedService {
       }
     }).filter(Objects::nonNull).toList();
 
-
     // ============= PART 4: GHÉP FEED: rec trên, feed cũ dưới =============
     List<FeedItemResponse> combined = new ArrayList<>();
-    combined.addAll(recommendedFeed);
+    combined.addAll(recommendedFeed);   // đã đúng thứ tự score
     combined.addAll(originalFeed);
 
     return new PageImpl<>(combined, pageable, combined.size());
   }
-
 
 }

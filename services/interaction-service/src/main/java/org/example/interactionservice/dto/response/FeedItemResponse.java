@@ -9,6 +9,7 @@ import java.time.LocalDateTime;
 @Builder
 public class FeedItemResponse {
   String type;
+  Double score;
   Long id;
   UserBasicResponse user;
   PostResponse post;

@@ -13,24 +13,18 @@ import java.util.List;
 @Service
 public class RecommendationClient {
 
-  @Value("${python.recommend.url}")
-  private String recommendUrl; // http://127.0.0.1:8000/recommend
+  @Value("${app.python.recommend.url}")
+  private String recommendUrl;
 
   private final RestTemplate restTemplate = new RestTemplate();
 
-  public List<RecommendedPost> getRecommendedPosts(Long userId, int topN) {
-
-    String url = recommendUrl + "?user_id=" + userId + "&top_n=" + topN;
-
+  // RecommendationClient.java
+  public List<RecommendedPost> getRecommendedPosts(Long userId, int offset, int limit) {
+    String url = recommendUrl + "?user_id=" + userId + "&offset=" + offset + "&limit=" + limit;
     ResponseEntity<List<RecommendedPost>> response =
-      restTemplate.exchange(
-        url,
-        HttpMethod.GET,
-        null,
+      restTemplate.exchange(url, HttpMethod.GET, null,
         new ParameterizedTypeReference<List<RecommendedPost>>() {
-        }
-      );
-
+        });
     return response.getBody();
   }
 }
