@@ -3,6 +3,8 @@ package org.example.interactionservice.service;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
+import org.example.commonweb.enums.ErrorCode;
+import org.example.commonweb.exception.AppException;
 import org.example.interactionservice.client.AuthClient;
 import org.example.interactionservice.dto.response.FriendSuggestResponse;
 import org.example.interactionservice.dto.response.FriendshipResponse;
@@ -225,5 +227,40 @@ public class FriendshipService {
         userMap.get(f.getFriendId())
       ))
       .toList();
+  }
+
+  public FriendshipResponse getFriendshipStatus(Long contextUserId, Long userId) {
+    if (contextUserId.equals(userId)) {
+      return null;
+    }
+
+    Friendship f = friendshipRepository
+      .findByUserIdAndFriendId(contextUserId, userId)
+      .orElseGet(() -> friendshipRepository
+        .findByUserIdAndFriendId(userId, contextUserId)
+        .orElse(null)
+      );
+
+    if (f == null) {
+      return null;
+    }
+
+    return new FriendshipResponse(f, null, null);
+  }
+
+  public void unFriend(Long contextUserId, Long userId) {
+    if (contextUserId.equals(userId)) {
+      throw new AppException(ErrorCode.BAD_REQUEST, "Cannot unfriend yourself");
+    }
+
+    Friendship friendship = friendshipRepository
+      .findBetweenUsers(contextUserId, userId)
+      .orElseThrow(() -> new AppException(ErrorCode.BAD_REQUEST, "Friendship not found"));
+
+    // Tuỳ business, nhưng thường:
+    // - ACCEPTED  -> unfriend
+    // - PENDING   -> hủy lời mời kết bạn
+    // - REJECTED  -> coi như không có quan hệ, xóa luôn cũng được
+    friendshipRepository.delete(friendship);
   }
 }

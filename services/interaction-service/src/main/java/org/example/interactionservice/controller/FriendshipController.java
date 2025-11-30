@@ -2,10 +2,13 @@ package org.example.interactionservice.controller;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import org.example.commonweb.DTO.core.AppApiResponse;
+import org.example.interactionservice.config.security.ContextUser;
+import org.example.interactionservice.dto.request.UnfriendRequest;
 import org.example.interactionservice.dto.response.FriendSuggestResponse;
 import org.example.interactionservice.dto.response.FriendshipResponse;
 import org.example.interactionservice.entity.Friendship;
@@ -79,5 +82,17 @@ public class FriendshipController {
   public AppApiResponse getPendingSentRequests(@PathVariable("userId") Long userId) {
     List<FriendshipResponse> pendingSent = friendshipService.getPendingSentRequests(userId);
     return new AppApiResponse(pendingSent);
+  }
+
+  @GetMapping("/status/{userId}")
+  public AppApiResponse getFriendShipStatus(@PathVariable("userId") Long userId) {
+    FriendshipResponse status = friendshipService.getFriendshipStatus(ContextUser.get().getUserId(), userId);
+    return new AppApiResponse(status);
+  }
+
+  @PostMapping("/unfriend")
+  public AppApiResponse unFriend(@RequestBody @Valid UnfriendRequest request) {
+    friendshipService.unFriend(ContextUser.get().getUserId(), request.getUserId());
+    return new AppApiResponse();
   }
 }
