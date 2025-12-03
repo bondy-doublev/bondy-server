@@ -41,4 +41,10 @@ public class Friendship extends BaseEntity {
 
   @Column(name = "responded_at")
   LocalDateTime respondedAt;
+
+  @Column(name = "request_notified", nullable = false)
+  Boolean requestNotified;
+
+  @Column(name = "response_notified", nullable = false)
+  Boolean responseNotified;
 }

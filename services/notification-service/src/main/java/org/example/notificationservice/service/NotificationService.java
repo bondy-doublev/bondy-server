@@ -38,7 +38,7 @@ public class NotificationService implements INotificationService {
     }
 
     boolean isUniqueType = switch (request.getType()) {
-      case LIKE, FRIEND_REQUEST, ACCEPT -> true;
+      case LIKE, FRIEND_REQUEST, FRIEND_ACCEPT -> true;
       default -> false;
     };
 

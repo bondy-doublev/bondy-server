@@ -12,6 +12,7 @@ import org.example.interactionservice.dto.request.CreateNotificationRequest;
 import org.example.interactionservice.dto.response.UserBasicResponse;
 import org.example.interactionservice.property.PropsConfig;
 import org.example.interactionservice.repository.CommentRepository;
+import org.example.interactionservice.repository.FriendshipRepository;
 import org.example.interactionservice.repository.MentionRepository;
 import org.example.interactionservice.repository.ReactionRepository;
 import org.springframework.http.HttpStatusCode;
@@ -32,6 +33,7 @@ public class NotificationNotifyJob {
   ReactionRepository reactionRepository;
   CommentRepository commentRepository;
   MentionRepository mentionRepository;
+  FriendshipRepository friendshipRepository;
   AuthClient authClient;
   PropsConfig propsConfig;
 
@@ -175,8 +177,94 @@ public class NotificationNotifyJob {
   }
 
   /**
-   * Hàm xử lý batch chung cho tất cả loại job
+   * Thông báo khi có lời mời kết bạn mới
+   * userId (sender)  -> gửi request
+   * friendId (receiver) -> nhận noti
    */
+  @Scheduled(fixedDelayString = "#{@propsConfig.notify.pollDelay}")
+  public void processFriendRequestNotifications() {
+    processBatch(
+      "friend_request",
+      () -> friendshipRepository.findPendingUnnotified(batchSize()),
+      f -> {
+        try {
+          if (f.getUserId().equals(f.getFriendId())) {
+            friendshipRepository.markRequestNotified(List.of(f.getId()));
+            return;
+          }
+
+          UserBasicResponse actor = authClient.getBasicProfile(f.getUserId());
+          if (actor == null) return;
+
+          HttpStatusCode status = notificationClient.notify(
+            CreateNotificationRequest.builder()
+              .userId(f.getFriendId())
+              .type(NotificationType.FRIEND_REQUEST)
+              .refType(RefType.USER)
+              .refId(f.getUserId())
+              .actorId(actor.getId())
+              .actorName(actor.getFullName())
+              .actorAvatarUrl(actor.getAvatarUrl())
+              .redirectId(f.getUserId())
+              .build()
+          );
+
+          if (status.is2xxSuccessful() || status.value() == 409) {
+            friendshipRepository.markRequestNotified(List.of(f.getId()));
+          } else {
+            log.warn("⚠️ Notification for friend request {} returned {}", f.getId(), status);
+          }
+        } catch (Exception e) {
+          log.error("❌ Failed to send friend request notification for {}", f.getId(), e);
+        }
+      }
+    );
+  }
+
+  /**
+   * Thông báo khi lời mời kết bạn được ACCEPT / REJECT
+   * friendId (receiver trước đó) -> là người hành động
+   * userId (sender ban đầu)      -> là người nhận noti
+   */
+  @Scheduled(fixedDelayString = "#{@propsConfig.notify.pollDelay}")
+  public void processFriendResponseNotifications() {
+    processBatch(
+      "friend_response",
+      () -> friendshipRepository.findResponseUnnotified(batchSize()),
+      f -> {
+        try {
+          if (f.getRespondedAt() == null) {
+            return;
+          }
+
+          UserBasicResponse actor = authClient.getBasicProfile(f.getFriendId());
+          if (actor == null) return;
+
+          HttpStatusCode status = notificationClient.notify(
+            CreateNotificationRequest.builder()
+              .userId(f.getUserId())
+              .type(NotificationType.FRIEND_ACCEPT)
+              .refType(RefType.USER)
+              .refId(f.getFriendId())
+              .actorId(actor.getId())
+              .actorName(actor.getFullName())
+              .actorAvatarUrl(actor.getAvatarUrl())
+              .redirectId(f.getFriendId())
+              .build()
+          );
+
+          if (status.is2xxSuccessful() || status.value() == 409) {
+            friendshipRepository.markResponseNotified(List.of(f.getId()));
+          } else {
+            log.warn("⚠️ Notification for friend response {} returned {}", f.getId(), status);
+          }
+        } catch (Exception e) {
+          log.error("❌ Failed to send friend response notification for {}", f.getId(), e);
+        }
+      }
+    );
+  }
+
   private <T> void processBatch(String name, Supplier<List<T>> fetch, Consumer<T> handler) {
     int loops = maxLoops();
     while (loops-- > 0) {
