@@ -7,7 +7,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import org.example.commonweb.DTO.core.AppApiResponse;
 import org.example.interactionservice.dto.PageRequestDto;
-import org.example.interactionservice.dto.response.FeedItemResponse;
+import org.example.interactionservice.dto.response.PostResponse;
 import org.example.interactionservice.entity.MediaAttachment;
 import org.example.interactionservice.service.interfaces.IWallService;
 import org.springframework.data.domain.Page;
@@ -25,7 +25,7 @@ public class WallController {
 
   @GetMapping("/{userId}/feeds")
   AppApiResponse getWall(@PathVariable Long userId, @ModelAttribute @Valid PageRequestDto filter) {
-    Page<FeedItemResponse> feeds = wallService.getWallFeed(userId, filter.toPageable());
+    Page<PostResponse> feeds = wallService.getWallFeed(userId, filter.toPageable());
 
     return new AppApiResponse(feeds);
   }

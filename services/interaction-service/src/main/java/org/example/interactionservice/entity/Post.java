@@ -55,11 +55,6 @@ public class Post extends BaseEntityWithUpdate {
   Set<Reaction> reactions = new HashSet<>();
 
   @Builder.Default
-  @OneToMany(mappedBy = "post", fetch = FetchType.LAZY)
-  @ToString.Exclude
-  Set<Share> shares = new HashSet<>();
-
-  @Builder.Default
   @OneToMany(mappedBy = "post", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
   @ToString.Exclude
   Set<Comment> comments = new HashSet<>();
@@ -69,7 +64,23 @@ public class Post extends BaseEntityWithUpdate {
   @ToString.Exclude
   Set<Mention> tags = new HashSet<>();
 
-  public PostResponse toPostResponse(UserBasicResponse owner, List<UserBasicResponse> taggedUsers, Boolean reacted) {
+  // NEW: self reference cho share
+  @ManyToOne(fetch = FetchType.LAZY)
+  @JoinColumn(name = "shared_from_post_id")
+  @ToString.Exclude
+  Post sharedFrom;
+
+  @Builder.Default
+  @OneToMany(mappedBy = "sharedFrom", fetch = FetchType.LAZY)
+  @ToString.Exclude
+  Set<Post> sharedPosts = new HashSet<>();
+
+  public PostResponse toPostResponse(
+    UserBasicResponse owner,
+    List<UserBasicResponse> taggedUsers,
+    Boolean reacted,
+    PostResponse originalPost
+  ) {
     return PostResponse.builder()
       .id(this.getId())
       .contentText(this.getContentText())
@@ -93,6 +104,7 @@ public class Post extends BaseEntityWithUpdate {
       .reacted(reacted)
       .owner(owner)
       .taggedUsers(taggedUsers)
+      .sharedFrom(originalPost)
       .build();
   }
 }

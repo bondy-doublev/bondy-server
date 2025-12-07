@@ -7,7 +7,9 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -66,4 +68,21 @@ public interface FriendshipRepository extends JpaRepository<Friendship, Long> {
   @Modifying
   @Query("UPDATE Friendship f SET f.responseNotified = true WHERE f.id IN :ids")
   void markResponseNotified(List<Long> ids);
+
+  List<Friendship> findByUserIdInOrFriendIdInAndStatus(
+    Collection<Long> userIds,
+    Collection<Long> friendIds,
+    Friendship.Status status
+  );
+
+  @Query("""
+    SELECT f
+    FROM Friendship f
+    WHERE f.status = :status
+      AND (f.userId IN :friendIds OR f.friendId IN :friendIds)
+    """)
+  List<Friendship> findAllByStatusAndUserIdInOrFriendIdIn(
+    @Param("status") Friendship.Status status,
+    @Param("friendIds") Collection<Long> friendIds
+  );
 }

@@ -12,6 +12,7 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface PostRepository extends JpaRepository<Post, Long> {
+
   Page<Post> findByUserId(Long userId, Pageable pageable);
 
   @Transactional
@@ -28,4 +29,20 @@ public interface PostRepository extends JpaRepository<Post, Long> {
   @Modifying
   @Query("UPDATE Post p SET p.shareCount = p.shareCount + :delta WHERE p.id = :postId")
   void updateShareCount(@Param("postId") Long postId, @Param("delta") int delta);
+
+  // NEW: feed public (home)
+  @Query("SELECT p FROM Post p WHERE p.visibility = TRUE ORDER BY p.createdAt DESC")
+  Page<Post> findPublicFeed(Pageable pageable);
+
+  // NEW: wall feed của 1 user, có xét owner/visibility
+  @Query("""
+    SELECT p FROM Post p
+    WHERE p.userId = :userId
+      AND (:isOwner = TRUE OR p.visibility = TRUE)
+    ORDER BY p.createdAt DESC
+    """)
+  Page<Post> findWallPosts(@Param("userId") Long userId,
+                           @Param("isOwner") Boolean isOwner,
+                           Pageable pageable);
 }
+

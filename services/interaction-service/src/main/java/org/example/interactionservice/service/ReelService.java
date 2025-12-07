@@ -17,6 +17,8 @@ import org.example.interactionservice.enums.ReelVisibility;
 import org.example.interactionservice.repository.ReelAllowedUserRepository;
 import org.example.interactionservice.repository.ReelReadUserRepository;
 import org.example.interactionservice.repository.ReelRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -241,7 +243,7 @@ public class ReelService {
   }
 
   private Set<Long> getFriendIds(Long viewerId) {
-    List<FriendshipResponse> friendships = friendshipService.getFriends(viewerId);
+    Page<FriendshipResponse> friendships = friendshipService.getFriends(viewerId, Pageable.unpaged());
     return friendships.stream()
       .flatMap(f -> Set.of(f.getSenderId(), f.getReceiverId()).stream())
       .filter(id -> !id.equals(viewerId))
