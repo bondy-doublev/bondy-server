@@ -160,7 +160,7 @@ public class NotificationNotifyJob {
               .actorId(actor.getId())
               .actorName(actor.getFullName())
               .actorAvatarUrl(actor.getAvatarUrl())
-              .redirectId(m.getPost().getId())
+              .redirectId(isPostMention ? m.getPost().getId() : m.getComment().getPost().getId())
               .build()
           );
 
