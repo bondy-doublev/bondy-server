@@ -18,7 +18,6 @@ import org.example.interactionservice.entity.Post;
 import org.example.interactionservice.enums.MediaType;
 import org.example.interactionservice.property.PropsConfig;
 import org.example.interactionservice.repository.PostRepository;
-import org.example.interactionservice.repository.ShareRepository;
 import org.example.interactionservice.service.interfaces.IPostService;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
@@ -31,12 +30,78 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class PostService implements IPostService {
+
   PropsConfig props;
   PostRepository postRepo;
-  ShareRepository shareRepo;
 
   UploadClient uploadClient;
   AuthClient authClient;
+
+  /**
+   * Helper: Map Post -> PostResponse theo viewerId (dùng chung cho getPost/create/update/feed/wall).
+   */
+  private PostResponse toPostResponseForViewer(Post post, Long viewerId) {
+    // Gom tất cả post cần xét: chính post + (option) bài gốc nếu là share
+    Set<Post> allPosts = new HashSet<>();
+    allPosts.add(post);
+    if (post.getSharedFrom() != null) {
+      allPosts.add(post.getSharedFrom());
+    }
+
+    // Gom userId: owner + taggedUsers của tất cả các post liên quan
+    Set<Long> userIds = new HashSet<>();
+    for (Post p : allPosts) {
+      userIds.add(p.getUserId());
+      p.getTags().forEach(tag -> userIds.add(tag.getUserId()));
+    }
+
+    Map<Long, UserBasicResponse> userMap = authClient
+      .getBasicProfiles(new ArrayList<>(userIds))
+      .stream()
+      .collect(Collectors.toMap(UserBasicResponse::getId, u -> u));
+
+    // Owner + tagged cho post hiện tại
+    UserBasicResponse owner = userMap.get(post.getUserId());
+    List<UserBasicResponse> taggedUsers = post.getTags().stream()
+      .map(Mention::getUserId)
+      .map(userMap::get)
+      .filter(Objects::nonNull)
+      .toList();
+
+    boolean reacted = post.getReactions().stream()
+      .anyMatch(r -> Objects.equals(r.getUserId(), viewerId));
+
+    // Nếu là bài share -> build originalPostResponse cho sharedFrom
+    PostResponse originalPostResponse = null;
+    if (post.getSharedFrom() != null) {
+      Post original = post.getSharedFrom();
+
+      UserBasicResponse originalOwner = userMap.get(original.getUserId());
+      List<UserBasicResponse> originalTaggedUsers = original.getTags().stream()
+        .map(Mention::getUserId)
+        .map(userMap::get)
+        .filter(Objects::nonNull)
+        .toList();
+
+      boolean originalReacted = original.getReactions().stream()
+        .anyMatch(r -> Objects.equals(r.getUserId(), viewerId));
+
+      originalPostResponse = original.toPostResponse(
+        originalOwner,
+        originalTaggedUsers,
+        originalReacted,
+        null // original của original
+      );
+    }
+
+    // Build PostResponse cho post hiện tại
+    return post.toPostResponse(
+      owner,
+      taggedUsers,
+      reacted,
+      originalPostResponse
+    );
+  }
 
   @Override
   public PostResponse getPost(Long userId, Long postId) {
@@ -47,39 +112,14 @@ public class PostService implements IPostService {
         "Post with id " + postId + " not found"
       ));
 
-    // Nếu muốn check quyền xem (post private mà không phải owner) thì thêm ở đây
+    // 2. Check quyền xem (private mà không phải owner)
     if (Boolean.FALSE.equals(post.getVisibility()) && !post.getUserId().equals(userId)) {
       throw new AppException(ErrorCode.FORBIDDEN, "You are not allowed to view this post");
     }
 
-    // 2. Gom tất cả userId cần để lấy profile (owner + tagged users)
-    Set<Long> userIds = new HashSet<>();
-    userIds.add(post.getUserId());
-    post.getTags().forEach(tag -> userIds.add(tag.getUserId()));
-
-    // 3. Call auth-service lấy basic profile
-    Map<Long, UserBasicResponse> userMap = authClient
-      .getBasicProfiles(userIds.stream().toList())
-      .stream()
-      .collect(Collectors.toMap(UserBasicResponse::getId, u -> u));
-
-    UserBasicResponse owner = userMap.get(post.getUserId());
-
-    // 4. Map tagged users
-    List<UserBasicResponse> taggedUsers = post.getTags().stream()
-      .map(Mention::getUserId)
-      .map(userMap::get)
-      .filter(Objects::nonNull)
-      .toList();
-
-    // 5. Xem user hiện tại đã react chưa
-    boolean reacted = post.getReactions().stream()
-      .anyMatch(r -> Objects.equals(r.getUserId(), userId));
-
-    // 6. Trả về PostResponse giống logic trong getFeed
-    return post.toPostResponse(owner, taggedUsers, reacted);
+    // 3. Map Post -> PostResponse theo viewer hiện tại
+    return toPostResponseForViewer(post, userId);
   }
-
 
   @Override
   public PostResponse createPost(Long ownerId, CreatePostRequest request) {
@@ -92,14 +132,18 @@ public class PostService implements IPostService {
 
     if (!CollectionUtils.isEmpty(mediaFiles)) {
       if (mediaFiles.size() > props.getPost().getMediaLimit()) {
-        throw new AppException(ErrorCode.BAD_REQUEST,
-          "You can upload at most %d media files".formatted(props.getPost().getMediaLimit()));
+        throw new AppException(
+          ErrorCode.BAD_REQUEST,
+          "You can upload at most %d media files".formatted(props.getPost().getMediaLimit())
+        );
       }
 
       long videoCount = mediaFiles.stream().filter(this::isVideoFile).count();
       if (videoCount > props.getPost().getVideoLimit()) {
-        throw new AppException(ErrorCode.BAD_REQUEST,
-          "A post cannot contain more than %d video".formatted(props.getPost().getVideoLimit()));
+        throw new AppException(
+          ErrorCode.BAD_REQUEST,
+          "A post cannot contain more than %d video".formatted(props.getPost().getVideoLimit())
+        );
       }
     }
 
@@ -108,6 +152,9 @@ public class PostService implements IPostService {
       .userId(ownerId)
       .visibility(request.getIsPublic())
       .contentText(request.getContent())
+      .reactionCount(0L)
+      .commentCount(0L)
+      .shareCount(0L)
       .build();
 
     // 4. Upload media
@@ -126,6 +173,7 @@ public class PostService implements IPostService {
       newPost.setMediaCount(mediaAttachments.size());
     }
 
+    // 5. Tags
     if (request.getTagUserIds() != null && !request.getTagUserIds().isEmpty()) {
       List<Mention> tags = new ArrayList<>();
 
@@ -144,7 +192,9 @@ public class PostService implements IPostService {
       newPost.setTags(new HashSet<>(tags));
     }
 
-    return postRepo.save(newPost).toPostResponse(null, null, false);
+    Post saved = postRepo.save(newPost);
+    // Viewer chính là owner -> phản hồi đầy đủ owner, tagged, reacted, sharedFrom (null)
+    return toPostResponseForViewer(saved, ownerId);
   }
 
   @Override
@@ -183,8 +233,10 @@ public class PostService implements IPostService {
     // media limit
     int mediaLimit = props.getPost().getMediaLimit();
     if (afterCount > mediaLimit) {
-      throw new AppException(ErrorCode.BAD_REQUEST,
-        "You can upload at most %d media files".formatted(mediaLimit));
+      throw new AppException(
+        ErrorCode.BAD_REQUEST,
+        "You can upload at most %d media files".formatted(mediaLimit)
+      );
     }
 
     // video limit
@@ -208,8 +260,10 @@ public class PostService implements IPostService {
     int finalVideoCount = existingVideoCount - removedVideoCount + newVideoCount;
     int videoLimit = props.getPost().getVideoLimit();
     if (finalVideoCount > videoLimit) {
-      throw new AppException(ErrorCode.BAD_REQUEST,
-        "A post cannot contain more than %d video".formatted(videoLimit));
+      throw new AppException(
+        ErrorCode.BAD_REQUEST,
+        "A post cannot contain more than %d video".formatted(videoLimit)
+      );
     }
 
     // 4) Upload media mới (nếu có)
@@ -255,7 +309,9 @@ public class PostService implements IPostService {
 
     post.setMediaCount(post.getMediaAttachments() == null ? 0 : post.getMediaAttachments().size());
     Post saved = postRepo.save(post);
-    return saved.toPostResponse(null, null, false);
+
+    // Viewer chính là người sửa
+    return toPostResponseForViewer(saved, userId);
   }
 
   @Override

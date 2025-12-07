@@ -5,22 +5,19 @@ import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import org.example.interactionservice.client.AuthClient;
 import org.example.interactionservice.config.security.ContextUser;
-import org.example.interactionservice.dto.response.FeedItemResponse;
+import org.example.interactionservice.dto.response.PostResponse;
 import org.example.interactionservice.dto.response.UserBasicResponse;
 import org.example.interactionservice.entity.MediaAttachment;
 import org.example.interactionservice.entity.Mention;
 import org.example.interactionservice.entity.Post;
-import org.example.interactionservice.enums.FeedType;
-import org.example.interactionservice.repository.FeedRepository;
 import org.example.interactionservice.repository.MediaAttachmentRepository;
 import org.example.interactionservice.repository.PostRepository;
 import org.example.interactionservice.service.interfaces.IWallService;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
-import java.sql.Timestamp;
-import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -28,111 +25,103 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class WallService implements IWallService {
-  MediaAttachmentRepository mediaAttachmentRepo;
-  FeedRepository feedRepo;
-  PostRepository postRepo;
 
+  MediaAttachmentRepository mediaAttachmentRepo;
+  PostRepository postRepo;
   AuthClient authClient;
 
   @Override
-  public Page<FeedItemResponse> getWallFeed(Long userId, Pageable pageable) {
-    Page<Object[]> raw = feedRepo.getWallFeed(userId, pageable, ContextUser.get().getUserId().equals(userId));
-    Set<Long> userIds = new HashSet<>();
-    Set<Long> postIds = new HashSet<>();
+  public Page<PostResponse> getWallFeed(Long userId, Pageable pageable) {
+    Long currentUserId = ContextUser.get().getUserId();
+    boolean isOwner = currentUserId.equals(userId);
 
-    for (Object[] row : raw) {
-      userIds.add(((Number) row[2]).longValue());
-      if (row[4] != null) {
-        postIds.add(((Number) row[4]).longValue());
-        userIds.add(((Number) row[5]).longValue());
-      } else if ("POST".equals(row[0])) {
-        postIds.add(((Number) row[1]).longValue());
+    // 1. Lấy tất cả post (bao gồm cả share-post) của user trên wall
+    Page<Post> page = postRepo.findWallPosts(userId, isOwner, pageable);
+    List<Post> wallPosts = page.getContent();
+
+    if (wallPosts.isEmpty()) {
+      return new PageImpl<>(List.of(), pageable, page.getTotalElements());
+    }
+
+    // 2. Gom thêm bài gốc của các bài share (sharedFrom)
+    Set<Post> allPosts = new HashSet<>(wallPosts);
+    for (Post p : wallPosts) {
+      if (p.getSharedFrom() != null) {
+        allPosts.add(p.getSharedFrom());
       }
     }
 
-    if (userIds.isEmpty() || postIds.isEmpty())
-      return null;
-
-    List<Post> posts = postRepo.findAllById(postIds);
-
-    posts.forEach(post -> {
-      userIds.add(post.getUserId());
-      post.getTags().forEach(tag -> userIds.add(tag.getUserId()));
-    });
-
-    Map<Long, UserBasicResponse> userMap = authClient.getBasicProfiles(userIds.stream().toList())
-      .stream().collect(Collectors.toMap(UserBasicResponse::getId, u -> u));
-
-    Map<Long, Post> postMap = posts
-      .stream().collect(Collectors.toMap(Post::getId, p -> p));
-
-    return raw.map(row -> {
-      String type = (String) row[0];
-      Long id = ((Number) row[1]).longValue();
-      Long userIdRaw = ((Number) row[2]).longValue();
-      LocalDateTime createdAt = ((Timestamp) row[3]).toLocalDateTime();
-      Long sharedPostId = row[4] != null ? ((Number) row[4]).longValue() : null;
-
-      UserBasicResponse user = userMap.get(userIdRaw);
-
-      if (FeedType.POST.name().equals(type)) {
-        Post post = postMap.get(id);
-        if (post == null)
-          return null;
-
-        List<UserBasicResponse> taggedUsers = post.getTags().stream()
-          .map(Mention::getUserId)
-          .map(userMap::get)
-          .filter(Objects::nonNull)
-          .toList();
-
-        return FeedItemResponse.builder()
-          .type(FeedType.POST.name())
-          .id(id)
-          .user(user)
-          .post(post.toPostResponse(
-            userMap.get(post.getUserId()),
-            taggedUsers,
-            post.getReactions().stream()
-              .anyMatch(r -> r.getUserId().equals(ContextUser.get().getUserId()))
-          ))
-          .createdAt(createdAt)
-          .build();
-      } else {
-        Post sharedPost = sharedPostId != null ? postMap.get(sharedPostId) : null;
-
-        if (sharedPost == null) {
-          return FeedItemResponse.builder()
-            .type(FeedType.SHARE.name())
-            .id(id)
-            .user(user)
-            .post(null)
-            .createdAt(createdAt)
-            .build();
-        }
-
-        UserBasicResponse sharedOwner = userMap.get(sharedPost.getUserId());
-
-        List<UserBasicResponse> taggedUsers = sharedPost.getTags().stream()
-          .map(Mention::getUserId)
-          .map(userMap::get)
-          .filter(Objects::nonNull)
-          .toList();
-
-        return FeedItemResponse.builder()
-          .type(FeedType.SHARE.name())
-          .id(id)
-          .user(user)
-          .post(sharedPost.toPostResponse(sharedOwner, taggedUsers, sharedPost.getReactions().stream().anyMatch(r -> r.getUserId().equals(ContextUser.get().getUserId()))))
-          .createdAt(createdAt)
-          .build();
+    // 3. Gom tất cả userId cần lấy thông tin (owner + taggedUsers)
+    Set<Long> userIds = new HashSet<>();
+    for (Post p : allPosts) {
+      userIds.add(p.getUserId());
+      for (Mention m : p.getTags()) {
+        userIds.add(m.getUserId());
       }
-    });
+    }
+
+    Map<Long, UserBasicResponse> userMap = authClient.getBasicProfiles(new ArrayList<>(userIds))
+      .stream()
+      .collect(Collectors.toMap(UserBasicResponse::getId, u -> u));
+
+    // 4. Map Post -> PostResponse (có sharedFrom)
+    List<PostResponse> responses = wallPosts.stream()
+      .map(p -> buildPostResponse(p, userMap, currentUserId))
+      .toList();
+
+    return new PageImpl<>(responses, pageable, page.getTotalElements());
+  }
+
+  private PostResponse buildPostResponse(
+    Post post,
+    Map<Long, UserBasicResponse> userMap,
+    Long currentUserId
+  ) {
+    // owner + tagged cho chính post này
+    UserBasicResponse owner = userMap.get(post.getUserId());
+    List<UserBasicResponse> taggedUsers = post.getTags().stream()
+      .map(Mention::getUserId)
+      .map(userMap::get)
+      .filter(Objects::nonNull)
+      .toList();
+
+    boolean reacted = post.getReactions().stream()
+      .anyMatch(r -> r.getUserId().equals(currentUserId));
+
+    // nếu là bài share thì build PostResponse cho bài gốc
+    PostResponse originalPostResponse = null;
+    if (post.getSharedFrom() != null) {
+      Post original = post.getSharedFrom();
+
+      UserBasicResponse originalOwner = userMap.get(original.getUserId());
+      List<UserBasicResponse> originalTaggedUsers = original.getTags().stream()
+        .map(Mention::getUserId)
+        .map(userMap::get)
+        .filter(Objects::nonNull)
+        .toList();
+
+      boolean originalReacted = original.getReactions().stream()
+        .anyMatch(r -> r.getUserId().equals(currentUserId));
+
+      originalPostResponse = original.toPostResponse(
+        originalOwner,
+        originalTaggedUsers,
+        originalReacted,
+        null // original của original
+      );
+    }
+
+    // build PostResponse cho post trên wall (gốc hoặc share)
+    return post.toPostResponse(
+      owner,
+      taggedUsers,
+      reacted,
+      originalPostResponse
+    );
   }
 
   @Override
   public List<MediaAttachment> getWallMedia(Long userId, Pageable pageable) {
     return mediaAttachmentRepo.findTopByUserId(userId, pageable);
   }
-
 }

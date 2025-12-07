@@ -27,6 +27,8 @@ public class PostResponse {
   List<MediaAttachmentResponse> mediaAttachments;
   List<UserBasicResponse> taggedUsers;
 
+  PostResponse sharedFrom;
+
   LocalDateTime createdAt;
   LocalDateTime updatedAt;
 }

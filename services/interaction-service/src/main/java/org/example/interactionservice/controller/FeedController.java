@@ -7,7 +7,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import org.example.commonweb.DTO.core.AppApiResponse;
 import org.example.interactionservice.dto.PageRequestDto;
-import org.example.interactionservice.dto.response.FeedItemResponse;
+import org.example.interactionservice.dto.response.PostResponse;
 import org.example.interactionservice.service.interfaces.IFeedService;
 import org.springframework.data.domain.Page;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -25,7 +25,7 @@ public class FeedController {
 
   @GetMapping()
   AppApiResponse getFeeds(@ModelAttribute @Valid PageRequestDto filter) {
-    Page<FeedItemResponse> feeds = feedService.getFeed(filter.toPageable());
+    Page<PostResponse> feeds = feedService.getFeed(filter.toPageable());
 
     return new AppApiResponse(feeds);
   }
