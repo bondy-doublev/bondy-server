@@ -123,6 +123,50 @@ public class PostService implements IPostService {
 
   @Override
   public PostResponse createPost(Long ownerId, CreatePostRequest request) {
+    boolean isShare = request.getOriginalPostId() != null;
+
+    if (isShare) {
+      Long originalPostId = request.getOriginalPostId();
+
+      Post original = postRepo.findById(originalPostId)
+        .orElseThrow(() -> new AppException(ErrorCode.BAD_REQUEST, "This post not exist"));
+
+      if (original.getSharedFrom() != null) {
+        throw new AppException(ErrorCode.BAD_REQUEST, "Cannot share a shared post");
+      }
+
+      // share không cho đính kèm media
+      if (request.getMediaFiles() != null && !request.getMediaFiles().isEmpty()) {
+        throw new AppException(ErrorCode.BAD_REQUEST, "Share post cannot contain media");
+      }
+
+      Post sharePost = Post.builder()
+        .userId(ownerId)
+        .visibility(request.getIsPublic())
+        .contentText(request.getContent())  // caption share (có thể null)
+        .reactionCount(0L)
+        .commentCount(0L)
+        .shareCount(0L)
+        .mediaCount(0)
+        .sharedFrom(original)
+        .build();
+
+      // tags cho bài share (nếu bạn muốn giữ tính năng tag như create post)
+      if (request.getTagUserIds() != null && !request.getTagUserIds().isEmpty()) {
+        List<Mention> tags = new ArrayList<>();
+        for (Long id : request.getTagUserIds()) {
+          if (id.equals(ownerId)) throw new AppException(ErrorCode.BAD_REQUEST, "Can not mention yourself");
+          tags.add(Mention.builder().post(sharePost).userId(id).build());
+        }
+        sharePost.setTags(new HashSet<>(tags));
+      }
+
+      postRepo.updateShareCount(original.getId(), 1);
+
+      Post saved = postRepo.save(sharePost);
+      return toPostResponseForViewer(saved, ownerId);
+    }
+
     if ((request.getContent() == null || request.getContent().isBlank())
       && CollectionUtils.isEmpty(request.getMediaFiles())) {
       throw new AppException(ErrorCode.BAD_REQUEST, "Post must contain text or media");
