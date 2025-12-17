@@ -148,7 +148,7 @@ public class FriendshipService {
   // Get accepted friends of a user (paged hoặc unpaged)
   public Page<FriendshipResponse> getFriends(Long userId, Pageable pageable) {
     List<FriendshipResponse> all = getAllFriendsInternal(userId);
-    return toPage(all, pageable); // ✅ unpaged đã được handle ở toPage
+    return toPage(all, pageable);
   }
 
   public Page<FriendshipResponse> getPendingRequests(Long userId, Pageable pageable) {

@@ -8,12 +8,9 @@ import lombok.experimental.FieldDefaults;
 import org.example.commonweb.DTO.core.AppApiResponse;
 import org.example.interactionservice.dto.PageRequestDto;
 import org.example.interactionservice.dto.response.PostResponse;
-import org.example.interactionservice.entity.MediaAttachment;
 import org.example.interactionservice.service.interfaces.IWallService;
 import org.springframework.data.domain.Page;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 @Tag(name = "Wall")
 @RestController
@@ -30,10 +27,10 @@ public class WallController {
     return new AppApiResponse(feeds);
   }
 
-  @GetMapping("/{userId}/medias")
-  AppApiResponse getWallMedia(@PathVariable Long userId, @ModelAttribute @Valid PageRequestDto filter) {
-    List<MediaAttachment> medias = wallService.getWallMedia(userId, filter.toPageable());
-
-    return new AppApiResponse(medias);
-  }
+//  @GetMapping("/{userId}/medias")
+//  AppApiResponse getWallMedia(@PathVariable Long userId, @ModelAttribute @Valid PageRequestDto filter) {
+//    List<MediaAttachment> medias = wallService.getWallMedia(userId, filter.toPageable());
+//
+//    return new AppApiResponse(medias);
+//  }
 }

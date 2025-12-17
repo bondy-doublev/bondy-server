@@ -21,4 +21,5 @@ public class CreatePostRequest {
 
   @NotNull(message = "isPublic is required")
   Boolean isPublic;
+  Long originalPostId;
 }

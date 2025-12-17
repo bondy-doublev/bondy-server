@@ -14,6 +14,7 @@ import org.example.interactionservice.dto.response.FriendshipResponse;
 import org.example.interactionservice.entity.Friendship;
 import org.example.interactionservice.service.FriendshipService;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.web.bind.annotation.*;
 
 @Tag(name = "Friendship", description = "Manage friend requests and friends")
@@ -69,12 +70,15 @@ public class FriendshipController {
   @GetMapping("/friends/{userId}")
   public AppApiResponse getFriends(
     @PathVariable("userId") Long userId,
-    @ModelAttribute @Valid PageRequestDto filter
+    @ModelAttribute @Valid PageRequestDto filter,
+    @RequestParam(name = "getAll", defaultValue = "false") boolean getAll
   ) {
     Page<FriendshipResponse> friends =
-      friendshipService.getFriends(userId, filter.toPageable());
+      friendshipService.getFriends(userId, getAll ? Pageable.unpaged() : filter.toPageable());
+
     return new AppApiResponse(friends);
   }
+
 
   @Operation(summary = "Get pending friend requests to a user (paged)")
   @GetMapping("/pending/{userId}")
