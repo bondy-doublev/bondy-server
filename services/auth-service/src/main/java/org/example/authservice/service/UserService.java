@@ -6,6 +6,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import org.example.authservice.client.UploadClient;
 import org.example.authservice.dto.UpdateUserDto;
+import org.example.authservice.dto.response.UploadResponse;
 import org.example.authservice.dto.response.UserBasicResponse;
 import org.example.authservice.entity.User;
 import org.example.authservice.repository.UserRepository;
@@ -63,14 +64,14 @@ public class UserService implements IUserService {
     }
 
     try {
-      String avatarUrl = uploadClient.uploadAvatar(file);
-      int updated = userRepository.updateAvatarUrlById(userId, avatarUrl);
+      UploadResponse avatarUrl = uploadClient.uploadAvatar(file);
+      System.out.println("Avatar: " + avatarUrl.getData());
+      int updated = userRepository.updateAvatarUrlById(userId, avatarUrl.getData());
 
       if (updated != 1) {
         throw new AppException(ErrorCode.INTERNAL_ERROR, "Upload avatar fail, please try again.");
       }
-
-      return avatarUrl;
+      return avatarUrl.getData();
     } catch (Exception e) {
       throw new AppException(ErrorCode.IO_ERROR, e.getMessage());
     }

@@ -53,8 +53,22 @@ services:
     volumes:
       - postgres_notification_data:/var/lib/postgresql/data
 
+  postgres-moderation:
+    image: postgres:15
+    container_name: postgres-moderation
+    restart: always
+    ports:
+      - "5436:5432"
+    environment:
+      POSTGRES_DB: bondy-moderation
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: 123456
+    volumes:
+      - postgres_moderation_data:/var/lib/postgresql/data
+
 volumes:
   postgres_auth_data:
   postgres_interaction_data:
   postgres_communication_data:
   postgres_notification_data:
+  postgres_moderation_data:
