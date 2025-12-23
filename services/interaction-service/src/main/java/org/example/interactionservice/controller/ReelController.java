@@ -7,6 +7,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import org.example.interactionservice.config.security.ContextUser;
 import org.example.interactionservice.dto.request.CreateReelRequest;
 import org.example.interactionservice.dto.request.UpdateReelVisibilityRequest;
 import org.example.interactionservice.dto.response.ReelResponse;
@@ -110,8 +111,8 @@ public class ReelController {
       - CUSTOM: friends explicitly listed.
       """,
     parameters = {
-      @Parameter(name = "viewerId", description = "Viewer's user ID", required = true),
-      @Parameter(name = "ownerId", description = "Filter by a specific owner (optional)", required = false)
+//      @Parameter(name = "viewerId", description = "Viewer's user ID", required = true),
+//      @Parameter(name = "ownerId", description = "Filter by a specific owner (optional)", required = false)
     },
     responses = {
       @ApiResponse(responseCode = "200", description = "List of visible reels",
@@ -119,9 +120,8 @@ public class ReelController {
     }
   )
   @GetMapping("/visible")
-  public ResponseEntity<List<ReelResponse>> getVisibleReels(@RequestParam Long viewerId,
-                                                            @RequestParam(required = false) Long ownerId) {
-    return ResponseEntity.ok(reelService.getVisibleReels(viewerId, ownerId));
+  public ResponseEntity<List<ReelResponse>> getVisibleReels() {
+    return ResponseEntity.ok(reelService.getVisibleReels(ContextUser.get().getUserId()));
   }
 
   @Operation(

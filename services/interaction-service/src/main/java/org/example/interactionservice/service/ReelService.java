@@ -117,40 +117,40 @@ public class ReelService {
     return reel.toResponse(owner, true, false, List.of());
   }
 
-  @Transactional
-  public List<ReelResponse> getVisibleReels(Long viewerId, Long ownerId) {
-    LocalDateTime now = LocalDateTime.now();
-
-    Set<Long> friendIds = getFriendIds(viewerId);
-    Set<Long> targetOwners = resolveTargetOwners(viewerId, ownerId, friendIds);
-    if (targetOwners.isEmpty()) return List.of();
-
-    List<Reel> reels = new ArrayList<>();
-    for (Long oId : targetOwners) {
-      reels.addAll(reelRepository.findAliveByOwner(oId, now));
-    }
-
-    List<Reel> visibleReels = reels.stream()
-      .filter(r -> !r.getIsDeleted())
-      .filter(r -> canViewReelIgnoringExpiry(r, viewerId, friendIds)) // alive variant also valid
-      .toList();
-
-    if (visibleReels.isEmpty()) return List.of();
-
-    Map<Long, UserBasicResponse> ownerMap = loadOwnerProfiles(visibleReels);
-
-    List<Long> reelIds = visibleReels.stream().map(Reel::getId).toList();
-    Map<Long, List<Long>> readIdMap = buildReadUserIdMap(reelIds);
-    Map<Long, List<UserBasicResponse>> readUsersProfileMap = buildReadUserProfileMap(readIdMap);
-
-    return visibleReels.stream()
-      .map(r -> {
-        List<UserBasicResponse> readUsers = readUsersProfileMap.getOrDefault(r.getId(), List.of());
-        boolean isRead = readUsers.stream().anyMatch(u -> Objects.equals(u.getId(), viewerId));
-        return r.toResponse(ownerMap.get(r.getUserId()), true, isRead, readUsers);
-      })
-      .toList();
-  }
+//  @Transactional
+//  public List<ReelResponse> getVisibleReels(Long viewerId, Long ownerId) {
+//    LocalDateTime now = LocalDateTime.now();
+//
+//    Set<Long> friendIds = getFriendIds(viewerId);
+//    Set<Long> targetOwners = resolveTargetOwners(viewerId, ownerId, friendIds);
+//    if (targetOwners.isEmpty()) return List.of();
+//
+//    List<Reel> reels = new ArrayList<>();
+//    for (Long oId : targetOwners) {
+//      reels.addAll(reelRepository.findAliveByOwner(oId, now));
+//    }
+//
+//    List<Reel> visibleReels = reels.stream()
+//      .filter(r -> !r.getIsDeleted())
+//      .filter(r -> canViewReelIgnoringExpiry(r, viewerId, friendIds)) // alive variant also valid
+//      .toList();
+//
+//    if (visibleReels.isEmpty()) return List.of();
+//
+//    Map<Long, UserBasicResponse> ownerMap = loadOwnerProfiles(visibleReels);
+//
+//    List<Long> reelIds = visibleReels.stream().map(Reel::getId).toList();
+//    Map<Long, List<Long>> readIdMap = buildReadUserIdMap(reelIds);
+//    Map<Long, List<UserBasicResponse>> readUsersProfileMap = buildReadUserProfileMap(readIdMap);
+//
+//    return visibleReels.stream()
+//      .map(r -> {
+//        List<UserBasicResponse> readUsers = readUsersProfileMap.getOrDefault(r.getId(), List.of());
+//        boolean isRead = readUsers.stream().anyMatch(u -> Objects.equals(u.getId(), viewerId));
+//        return r.toResponse(ownerMap.get(r.getUserId()), true, isRead, readUsers);
+//      })
+//      .toList();
+//  }
 
   @Transactional
   public List<ReelResponse> getAllReels(Long viewerId, Long ownerId) {
@@ -319,5 +319,40 @@ public class ReelService {
   // Convenience variant when friendIds not precomputed
   private boolean canViewReelIgnoringExpiry(Reel reel, Long viewerId) {
     return canViewReelIgnoringExpiry(reel, viewerId, getFriendIds(viewerId));
+  }
+
+  // new visible
+  @Transactional
+  public List<ReelResponse> getVisibleReels(Long userId) {
+    LocalDateTime now = LocalDateTime.now();
+
+    Set<Long> targetOwners = getFriendIds(userId);
+    targetOwners.add(userId);
+
+    List<Reel> reels = new ArrayList<>();
+    for (Long oId : targetOwners) {
+      reels.addAll(reelRepository.findAliveByOwner(oId, now));
+    }
+
+    List<Reel> visibleReels = reels.stream()
+      .filter(r -> !r.getIsDeleted())
+      .filter(r -> canViewReelIgnoringExpiry(r, userId, targetOwners)) // alive variant also valid
+      .toList();
+
+    if (visibleReels.isEmpty()) return List.of();
+
+    Map<Long, UserBasicResponse> ownerMap = loadOwnerProfiles(visibleReels);
+
+    List<Long> reelIds = visibleReels.stream().map(Reel::getId).toList();
+    Map<Long, List<Long>> readIdMap = buildReadUserIdMap(reelIds);
+    Map<Long, List<UserBasicResponse>> readUsersProfileMap = buildReadUserProfileMap(readIdMap);
+
+    return visibleReels.stream()
+      .map(r -> {
+        List<UserBasicResponse> readUsers = readUsersProfileMap.getOrDefault(r.getId(), List.of());
+        boolean isRead = readUsers.stream().anyMatch(u -> Objects.equals(u.getId(), userId));
+        return r.toResponse(ownerMap.get(r.getUserId()), true, isRead, readUsers);
+      })
+      .toList();
   }
 }
