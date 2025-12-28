@@ -37,6 +37,7 @@ public class AuthController {
 
     CookieUtil.addRefreshCookie(
       response,
+      authResponse.getUser().getId(),
       token.getToken(),
       token.getExpiresAt().atZone(ZoneId.systemDefault()).toInstant()
     );
@@ -53,6 +54,7 @@ public class AuthController {
 
     CookieUtil.addRefreshCookie(
       response,
+      authResponse.getUser().getId(),
       token.getToken(),
       token.getExpiresAt().atZone(ZoneId.systemDefault()).toInstant()
     );
@@ -62,12 +64,14 @@ public class AuthController {
 
   @PostMapping("/refresh")
   AppApiResponse refreshToken(@Parameter(hidden = true) @CookieValue(value = "refreshToken") String refreshToken,
+                              @Parameter(hidden = true) @CookieValue(value = "userId") String userId,
                               HttpServletResponse response) {
-    AuthResponse authResponse = authService.refreshToken(refreshToken);
+    AuthResponse authResponse = authService.refreshToken(Long.parseLong(userId), refreshToken);
     RefreshTokenDto token = authResponse.getRefreshToken();
 
     CookieUtil.addRefreshCookie(
       response,
+      authResponse.getUser().getId(),
       token.getToken(),
       token.getExpiresAt().atZone(ZoneId.systemDefault()).toInstant()
     );

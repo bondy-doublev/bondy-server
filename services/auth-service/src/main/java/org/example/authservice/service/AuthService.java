@@ -165,9 +165,7 @@ public class AuthService implements IAuthService {
 
 
   @Override
-  public AuthResponse refreshToken(String rawToken) {
-    Long userId = ContextUser.get().getUserId();
-
+  public AuthResponse refreshToken(Long userId, String rawToken) {
     String tokenHash = refreshTokenRepo.findValidByUserId(userId)
       .orElseThrow(() -> new AppException(ErrorCode.UNAUTHORIZED, "Invalid refresh token"));
 
