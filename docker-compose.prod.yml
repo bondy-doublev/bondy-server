@@ -110,6 +110,8 @@ services:
         condition: service_healthy
       config-server:
         condition: service_healthy
+      recommendation-system:
+        condition: service_healthy
     healthcheck:
       test: [ "CMD", "curl", "-f", "http://localhost:9085/actuator/health" ]
       interval: 20s
@@ -236,6 +238,37 @@ services:
       test: [ "CMD", "curl", "-f", "http://localhost:9080/actuator/health" ]
       interval: 20s
       timeout: 5s
+      retries: 3
+
+  ### PROXY ###
+  proxy-server:
+    build: ./services/bondy-proxy
+    container_name: proxy-server
+    env_file:
+      - ./services/bondy-proxy/.env.proxy.docker
+    ports:
+      - "${PROXY_HOST_PORT}:3333"
+    healthcheck:
+      test: [ "CMD-SHELL", "wget -qO- http://proxy-server:3333/health" ]
+      interval: 20s
+      timeout: 5s
+      retries: 10
+
+  ### PROXY ###
+  recommendation-system:
+    build: ./services/bondy-recommendation-system
+    container_name: recommendation-system
+    env_file:
+      - ./services/bondy-recommendation-system/.env.recommend.docker
+    ports:
+      - "${RECOMMENDATION_HOST_PORT}:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8000/health" ]
+      interval: 30s
+      timeout: 10s
       retries: 3
 
 volumes:
