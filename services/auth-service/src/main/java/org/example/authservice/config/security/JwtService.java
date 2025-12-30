@@ -35,7 +35,7 @@ public class JwtService {
     Instant now = Instant.now();
 
     var issuedAt = Date.from(now);
-    var expiration = Date.from(now.plusSeconds(30));
+    var expiration = Date.from(now.plusSeconds(accessTtlSec));
 
     return Jwts.builder()
       .claims()
