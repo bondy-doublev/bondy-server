@@ -5,10 +5,8 @@ import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import org.example.authservice.client.MailClient;
-import org.example.authservice.config.security.ContextUser;
 import org.example.authservice.config.security.JwtService;
 import org.example.authservice.dto.RefreshTokenDto;
-import org.example.authservice.dto.UserTokenDto;
 import org.example.authservice.dto.request.*;
 import org.example.authservice.dto.response.AuthResponse;
 import org.example.authservice.dto.response.MessageResponse;
@@ -86,8 +84,7 @@ public class AuthService implements IAuthService {
 
       sendWelcomeMail(newUser, rawPassword, oauthProvider);
 
-      UserTokenDto tokenDto = new UserTokenDto(newUser.getId(), newUser.getEmail(), newUser.getRole());
-      AuthResponse tokenResponse = buildAuthResponse(tokenDto);
+      AuthResponse tokenResponse = buildAuthResponse(newUser);
 
       return AuthResponse.builder()
         .accessToken(tokenResponse.getAccessToken())
@@ -125,8 +122,7 @@ public class AuthService implements IAuthService {
     }
 
     userRepo.save(user);
-    UserTokenDto tokenDto = new UserTokenDto(user.getId(), user.getEmail(), user.getRole());
-    AuthResponse tokenResponse = buildAuthResponse(tokenDto);
+    AuthResponse tokenResponse = buildAuthResponse(user);
 
     return AuthResponse.builder()
       .accessToken(tokenResponse.getAccessToken())
@@ -153,8 +149,7 @@ public class AuthService implements IAuthService {
     if (!passwordEncoder.matches(request.getPassword(), localAccount.getPasswordHash()))
       throw new AppException(ErrorCode.UNAUTHORIZED, errorMessage);
 
-    UserTokenDto tokenDto = new UserTokenDto(user.getId(), user.getEmail(), user.getRole());
-    AuthResponse tokenResponse = buildAuthResponse(tokenDto);
+    AuthResponse tokenResponse = buildAuthResponse(user);
 
     return AuthResponse.builder()
       .accessToken(tokenResponse.getAccessToken())
@@ -166,13 +161,16 @@ public class AuthService implements IAuthService {
 
   @Override
   public AuthResponse refreshToken(Long userId, String rawToken) {
+    User user = userRepo.findById(userId)
+      .orElseThrow(() -> new AppException(ErrorCode.UNAUTHORIZED, "Invalid refresh info"));
+
     String tokenHash = refreshTokenRepo.findValidByUserId(userId)
-      .orElseThrow(() -> new AppException(ErrorCode.UNAUTHORIZED, "Invalid refresh token"));
+      .orElseThrow(() -> new AppException(ErrorCode.UNAUTHORIZED, "Invalid refresh info"));
 
     if (!passwordEncoder.matches(rawToken, tokenHash))
-      throw new AppException(ErrorCode.UNAUTHORIZED, "Invalid refresh token");
+      throw new AppException(ErrorCode.UNAUTHORIZED, "Invalid refresh info");
 
-    return buildAuthResponse(new UserTokenDto(userId, ContextUser.get().getEmail(), ContextUser.get().getRole()));
+    return buildAuthResponse(user);
   }
 
   @Override
@@ -331,22 +329,23 @@ public class AuthService implements IAuthService {
       : "11111111";
   }
 
-  private AuthResponse buildAuthResponse(UserTokenDto user) {
+  private AuthResponse buildAuthResponse(User user) {
     var accessToken = jwtService.generateAccessToken(user);
     var refreshToken = generateRefreshToken(user);
 
     return AuthResponse.builder()
       .accessToken(accessToken)
       .refreshToken(refreshToken)
+      .user(UserResponse.fromEntity(user))
       .build();
   }
 
-  private RefreshTokenDto generateRefreshToken(UserTokenDto userDto) {
+  private RefreshTokenDto generateRefreshToken(User userDto) {
     var token = UUID.randomUUID().toString();
     var tokenHash = passwordEncoder.encode(token);
 
     User user = new User();
-    user.setId(userDto.getUserId());
+    user.setId(userDto.getId());
 
     RefreshToken newToken = RefreshToken.builder()
       .tokenHash(tokenHash)

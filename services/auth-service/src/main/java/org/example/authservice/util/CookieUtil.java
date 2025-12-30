@@ -17,7 +17,7 @@ public class CookieUtil {
       .maxAge(Duration.between(Instant.now(), exp))
       .build();
 
-    ResponseCookie uid = ResponseCookie.from("uid", String.valueOf(userId))
+    ResponseCookie uid = ResponseCookie.from("userId", String.valueOf(userId))
       .httpOnly(false)
       .secure(true)
       .sameSite("Strict")

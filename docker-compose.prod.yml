@@ -58,7 +58,7 @@ services:
       - ./services/auth-service/.env.auth.docker
     ports:
       - "${AUTH_HOST_PORT}:8080"
-      - "${AUTH_ACTUATOR_HOST_PORT}:9090"
+      - "${AUTH_ACTUATOR_HOST_PORT}:9081"
     depends_on:
       postgres:
         condition: service_healthy
@@ -67,7 +67,7 @@ services:
       config-server:
         condition: service_healthy
     healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost:9090/actuator/health" ]
+      test: [ "CMD", "curl", "-f", "http://localhost:9081/actuator/health" ]
       interval: 20s
       timeout: 5s
       retries: 3
@@ -80,7 +80,7 @@ services:
       - ./services/communication-service/.env.communication.docker
     ports:
       - "${COMMUNICATION_HOST_PORT}:8080"
-      - "${COMMUNICATION_ACTUATOR_HOST_PORT}:9090"
+      - "${COMMUNICATION_ACTUATOR_HOST_PORT}:9086"
     depends_on:
       postgres:
         condition: service_healthy
@@ -89,10 +89,10 @@ services:
       config-server:
         condition: service_healthy
     healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost:9090/actuator/health" ]
+      test: [ "CMD-SHELL", "wget -qO- http://communication-service:9086/actuator/health" ]
       interval: 20s
       timeout: 5s
-      retries: 3
+      retries: 10
 
   ### INTERACTION SERVICE ###
   interaction-service:
@@ -102,7 +102,7 @@ services:
       - ./services/interaction-service/.env.interaction.docker
     ports:
       - "${INTERACTION_HOST_PORT}:8080"
-      - "${INTERACTION_ACTUATOR_HOST_PORT}:9090"
+      - "${INTERACTION_ACTUATOR_HOST_PORT}:9085"
     depends_on:
       postgres:
         condition: service_healthy
@@ -111,7 +111,7 @@ services:
       config-server:
         condition: service_healthy
     healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost:9090/actuator/health" ]
+      test: [ "CMD", "curl", "-f", "http://localhost:9085/actuator/health" ]
       interval: 20s
       timeout: 5s
       retries: 3
@@ -124,7 +124,7 @@ services:
       - ./services/mail-service/.env.mail.docker
     ports:
       - "${MAIL_HOST_PORT}:8080"
-      - "${MAIL_ACTUATOR_HOST_PORT}:9090"
+      - "${MAIL_ACTUATOR_HOST_PORT}:9082"
     depends_on:
       postgres:
         condition: service_healthy
@@ -133,7 +133,7 @@ services:
       config-server:
         condition: service_healthy
     healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost:9090/actuator/health" ]
+      test: [ "CMD", "curl", "-f", "http://localhost:9082/actuator/health" ]
       interval: 20s
       timeout: 5s
       retries: 3
@@ -146,7 +146,7 @@ services:
       - ./services/moderation-service/.env.moderation.docker
     ports:
       - "${MODERATION_HOST_PORT}:8080"
-      - "${MODERATION_ACTUATOR_HOST_PORT}:9090"
+      - "${MODERATION_ACTUATOR_HOST_PORT}:9088"
     depends_on:
       postgres:
         condition: service_healthy
@@ -155,7 +155,7 @@ services:
       config-server:
         condition: service_healthy
     healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost:9090/actuator/health" ]
+      test: [ "CMD", "curl", "-f", "http://localhost:9088/actuator/health" ]
       interval: 20s
       timeout: 5s
       retries: 3
@@ -168,7 +168,7 @@ services:
       - ./services/notification-service/.env.notification.docker
     ports:
       - "${NOTIFICATION_HOST_PORT}:8080"
-      - "${NOTIFICATION_ACTUATOR_HOST_PORT}:9090"
+      - "${NOTIFICATION_ACTUATOR_HOST_PORT}:9087"
     depends_on:
       postgres:
         condition: service_healthy
@@ -177,7 +177,7 @@ services:
       config-server:
         condition: service_healthy
     healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost:9090/actuator/health" ]
+      test: [ "CMD", "curl", "-f", "http://localhost:9087/actuator/health" ]
       interval: 20s
       timeout: 5s
       retries: 3
@@ -190,7 +190,7 @@ services:
       - ./services/upload-service/.env.upload.docker
     ports:
       - "${UPLOAD_HOST_PORT}:8080"
-      - "${UPLOAD_ACTUATOR_HOST_PORT}:9090"
+      - "${UPLOAD_ACTUATOR_HOST_PORT}:9083"
     depends_on:
       postgres:
         condition: service_healthy
@@ -199,7 +199,7 @@ services:
       config-server:
         condition: service_healthy
     healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost:9090/actuator/health" ]
+      test: [ "CMD", "curl", "-f", "http://localhost:9083/actuator/health" ]
       interval: 20s
       timeout: 5s
       retries: 3
@@ -212,14 +212,28 @@ services:
       - ./gateway/.env.gateway.docker
     ports:
       - "${GATEWAY_HOST_PORT}:8080"
-      - "${GATEWAY_ACTUATOR_HOST_PORT}:9090"
+      - "${GATEWAY_ACTUATOR_HOST_PORT}:9080"
     depends_on:
       discovery-server:
         condition: service_healthy
       config-server:
         condition: service_healthy
+      auth-service:
+        condition: service_healthy
+      mail-service:
+        condition: service_healthy
+      communication-service:
+        condition: service_healthy
+      interaction-service:
+        condition: service_healthy
+      moderation-service:
+        condition: service_healthy
+      notification-service:
+        condition: service_healthy
+      upload-service:
+        condition: service_healthy
     healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost:9090/actuator/health" ]
+      test: [ "CMD", "curl", "-f", "http://localhost:9080/actuator/health" ]
       interval: 20s
       timeout: 5s
       retries: 3
