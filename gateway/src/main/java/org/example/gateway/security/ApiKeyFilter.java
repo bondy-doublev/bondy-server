@@ -63,9 +63,9 @@ public class ApiKeyFilter implements GlobalFilter {
     }
 
     String apiKey = request.getHeaders().getFirst(headerName);
-//        System.out.println("API key header: " + request.getHeaders());
-//        System.out.println("API key header name: " + headerName);
-//        System.out.println("API key: " + apiKey);
+    log.info("API key header: " + request.getHeaders());
+    log.info("API key header name: " + headerName);
+    log.info("API key: " + apiKey);
 
     if (apiKey == null || apiKey.isBlank()) {
       return FilterUtil.unauthorized(exchange, "Missing API Key");

@@ -1,20 +1,5 @@
-server:
-  port: 8083
-
 spring:
   application:
     name: upload-service
   config:
     import: optional:configserver:${CONFIG_SERVER_URL}
-  servlet:
-    multipart:
-      max-file-size: 50MB       # Giới hạn dung lượng 1 file
-      max-request-size: 60MB    # Giới hạn tổng dung lượng nhiều file trong 1 request
-
-cloudinary:
-  cloud_name: ${CLOUDINARY_NAME}
-  api_key: ${CLOUDINARY_API_KEY}
-  api_secret: ${CLOUDINARY_API_SECRET}
-
-upload:
-  path: ./uploads

@@ -193,6 +193,8 @@ services:
     ports:
       - "${UPLOAD_HOST_PORT}:8080"
       - "${UPLOAD_ACTUATOR_HOST_PORT}:9083"
+    volumes:
+      - ./uploads:/app/uploads
     depends_on:
       postgres:
         condition: service_healthy
@@ -254,7 +256,7 @@ services:
       timeout: 5s
       retries: 10
 
-  ### PROXY ###
+  ### RECOMMENDATION ###
   recommendation-system:
     build: ./services/bondy-recommendation-system
     container_name: recommendation-system

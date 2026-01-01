@@ -136,18 +136,18 @@ public class AuthService implements IAuthService {
     String errorMessage = "Invalid email or password.";
 
     User user = userRepo.findByEmail(request.getEmail())
-      .orElseThrow(() -> new AppException(ErrorCode.UNAUTHORIZED, errorMessage));
+      .orElseThrow(() -> new AppException(ErrorCode.BAD_REQUEST, errorMessage));
 
     if (!user.getActive())
-      throw new AppException(ErrorCode.UNAUTHORIZED, "Your account is inactive");
+      throw new AppException(ErrorCode.BAD_REQUEST, "Your account is inactive");
 
     Account localAccount = user.getAccounts().stream()
       .filter(acc -> Provider.LOCAL.name().equals(acc.getProvider()))
       .findFirst()
-      .orElseThrow(() -> new AppException(ErrorCode.UNAUTHORIZED, errorMessage));
+      .orElseThrow(() -> new AppException(ErrorCode.BAD_REQUEST, errorMessage));
 
     if (!passwordEncoder.matches(request.getPassword(), localAccount.getPasswordHash()))
-      throw new AppException(ErrorCode.UNAUTHORIZED, errorMessage);
+      throw new AppException(ErrorCode.BAD_REQUEST, errorMessage);
 
     AuthResponse tokenResponse = buildAuthResponse(user);
 
