@@ -110,8 +110,6 @@ services:
         condition: service_healthy
       config-server:
         condition: service_healthy
-      recommendation-system:
-        condition: service_healthy
     healthcheck:
       test: [ "CMD", "curl", "-f", "http://localhost:9085/actuator/health" ]
       interval: 20s
@@ -266,6 +264,8 @@ services:
       - "${RECOMMENDATION_HOST_PORT}:8000"
     depends_on:
       postgres:
+        condition: service_healthy
+      interaction-service:
         condition: service_healthy
     healthcheck:
       test: [ "CMD", "curl", "-f", "http://localhost:8000/health" ]
