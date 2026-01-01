@@ -108,16 +108,15 @@
   </dependencies>
 
   <modules>
+    <module>libs/common-web</module>
     <module>gateway</module>
     <module>config-server</module>
     <module>discovery-server</module>
-    <module>libs/common-web</module>
     <module>services/auth-service</module>
     <module>services/mail-service</module>
     <module>services/upload-service</module>
     <module>services/notification-service</module>
     <module>services/interaction-service</module>
-    <module>services/communication-service</module>
     <module>services/moderation-service</module>
   </modules>
 

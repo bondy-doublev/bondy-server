@@ -14,7 +14,7 @@ import java.util.Map;
 public class RecommendationClient {
 
   @Value("${app.python.recommend.url}")
-  private String recommendUrl; // ví dụ: http://127.0.0.1:8000/recommend
+  private String recommendUrl;
 
   private final RestTemplate restTemplate = new RestTemplate();
 

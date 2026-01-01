@@ -2,8 +2,6 @@ FROM eclipse-temurin:21-jre
 
 WORKDIR /app
 
-COPY target/auth.jar app.jar
-
-EXPOSE 8081
+COPY target/auth-service-1.0.0.jar app.jar
 
 ENTRYPOINT ["java", "-jar", "app.jar"]

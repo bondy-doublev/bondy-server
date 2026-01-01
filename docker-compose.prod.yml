@@ -1,0 +1,277 @@
+version: "3.9"
+
+services:
+  ### DATABASE ###
+  postgres:
+    image: postgres:15
+    container_name: postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - "${POSTGRES_HOST_PORT}:5432"
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER}" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  ### CONFIG SERVER ###
+  config-server:
+    build: ./config-server
+    container_name: config-server
+    env_file:
+      - ./config-server/.env.configserver
+    ports:
+      - "${CONFIG_SERVER_HOST_PORT}:8888"
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8888/actuator/health" ]
+      interval: 20s
+      timeout: 5s
+      retries: 3
+
+  ### DISCOVERY SERVER (EUREKA) ###
+  discovery-server:
+    build: ./discovery-server
+    container_name: discovery-server
+    env_file:
+      - ./discovery-server/.env.discovery
+    depends_on:
+      config-server:
+        condition: service_healthy
+    ports:
+      - "${DISCOVERY_SERVER_HOST_PORT}:8761"
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8761/actuator/health" ]
+      interval: 20s
+      timeout: 5s
+      retries: 3
+
+  ### AUTH SERVICE ###
+  auth-service:
+    build: ./services/auth-service
+    container_name: auth-service
+    env_file:
+      - ./services/auth-service/.env.auth.docker
+    ports:
+      - "${AUTH_HOST_PORT}:8080"
+      - "${AUTH_ACTUATOR_HOST_PORT}:9081"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      discovery-server:
+        condition: service_healthy
+      config-server:
+        condition: service_healthy
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:9081/actuator/health" ]
+      interval: 20s
+      timeout: 5s
+      retries: 3
+
+  ### COMMUNICATION SERVICE ###
+  communication-service:
+    build: ./services/communication-service
+    container_name: communication-service
+    env_file:
+      - ./services/communication-service/.env.communication.docker
+    ports:
+      - "${COMMUNICATION_HOST_PORT}:8080"
+      - "${COMMUNICATION_ACTUATOR_HOST_PORT}:9086"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      discovery-server:
+        condition: service_healthy
+      config-server:
+        condition: service_healthy
+    healthcheck:
+      test: [ "CMD-SHELL", "wget -qO- http://communication-service:9086/actuator/health" ]
+      interval: 20s
+      timeout: 5s
+      retries: 10
+
+  ### INTERACTION SERVICE ###
+  interaction-service:
+    build: ./services/interaction-service
+    container_name: interaction-service
+    env_file:
+      - ./services/interaction-service/.env.interaction.docker
+    ports:
+      - "${INTERACTION_HOST_PORT}:8080"
+      - "${INTERACTION_ACTUATOR_HOST_PORT}:9085"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      discovery-server:
+        condition: service_healthy
+      config-server:
+        condition: service_healthy
+      recommendation-system:
+        condition: service_healthy
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:9085/actuator/health" ]
+      interval: 20s
+      timeout: 5s
+      retries: 3
+
+  ### MAIL SERVICE ###
+  mail-service:
+    build: ./services/mail-service
+    container_name: mail-service
+    env_file:
+      - ./services/mail-service/.env.mail.docker
+    ports:
+      - "${MAIL_HOST_PORT}:8080"
+      - "${MAIL_ACTUATOR_HOST_PORT}:9082"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      discovery-server:
+        condition: service_healthy
+      config-server:
+        condition: service_healthy
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:9082/actuator/health" ]
+      interval: 20s
+      timeout: 5s
+      retries: 3
+
+  ### MODERATION SERVICE ###
+  moderation-service:
+    build: ./services/moderation-service
+    container_name: moderation-service
+    env_file:
+      - ./services/moderation-service/.env.moderation.docker
+    ports:
+      - "${MODERATION_HOST_PORT}:8080"
+      - "${MODERATION_ACTUATOR_HOST_PORT}:9088"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      discovery-server:
+        condition: service_healthy
+      config-server:
+        condition: service_healthy
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:9088/actuator/health" ]
+      interval: 20s
+      timeout: 5s
+      retries: 3
+
+  ### NOTIFICATION SERVICE ###
+  notification-service:
+    build: ./services/notification-service
+    container_name: notification-service
+    env_file:
+      - ./services/notification-service/.env.notification.docker
+    ports:
+      - "${NOTIFICATION_HOST_PORT}:8080"
+      - "${NOTIFICATION_ACTUATOR_HOST_PORT}:9087"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      discovery-server:
+        condition: service_healthy
+      config-server:
+        condition: service_healthy
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:9087/actuator/health" ]
+      interval: 20s
+      timeout: 5s
+      retries: 3
+
+  ### UPLOAD SERVICE ###
+  upload-service:
+    build: ./services/upload-service
+    container_name: upload-service
+    env_file:
+      - ./services/upload-service/.env.upload.docker
+    ports:
+      - "${UPLOAD_HOST_PORT}:8080"
+      - "${UPLOAD_ACTUATOR_HOST_PORT}:9083"
+    volumes:
+      - ./uploads:/app/uploads
+    depends_on:
+      postgres:
+        condition: service_healthy
+      discovery-server:
+        condition: service_healthy
+      config-server:
+        condition: service_healthy
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:9083/actuator/health" ]
+      interval: 20s
+      timeout: 5s
+      retries: 3
+
+  ### GATEWAY ###
+  gateway:
+    build: ./gateway
+    container_name: gateway
+    env_file:
+      - ./gateway/.env.gateway.docker
+    ports:
+      - "${GATEWAY_HOST_PORT}:8080"
+      - "${GATEWAY_ACTUATOR_HOST_PORT}:9080"
+    depends_on:
+      discovery-server:
+        condition: service_healthy
+      config-server:
+        condition: service_healthy
+      auth-service:
+        condition: service_healthy
+      mail-service:
+        condition: service_healthy
+      communication-service:
+        condition: service_healthy
+      interaction-service:
+        condition: service_healthy
+      moderation-service:
+        condition: service_healthy
+      notification-service:
+        condition: service_healthy
+      upload-service:
+        condition: service_healthy
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:9080/actuator/health" ]
+      interval: 20s
+      timeout: 5s
+      retries: 3
+
+  ### PROXY ###
+  proxy-server:
+    build: ./services/bondy-proxy
+    container_name: proxy-server
+    env_file:
+      - ./services/bondy-proxy/.env.proxy.docker
+    ports:
+      - "${PROXY_HOST_PORT}:3333"
+    healthcheck:
+      test: [ "CMD-SHELL", "wget -qO- http://proxy-server:3333/health" ]
+      interval: 20s
+      timeout: 5s
+      retries: 10
+
+  ### RECOMMENDATION ###
+  recommendation-system:
+    build: ./services/bondy-recommendation-system
+    container_name: recommendation-system
+    env_file:
+      - ./services/bondy-recommendation-system/.env.recommend.docker
+    ports:
+      - "${RECOMMENDATION_HOST_PORT}:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8000/health" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  pg_data:

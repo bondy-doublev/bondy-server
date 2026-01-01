@@ -57,10 +57,11 @@ public class FileUploadService {
   public String uploadFileLocal(MultipartFile file) throws IOException {
     String newFileName = generateUniqueFileName(file.getOriginalFilename());
     Path filePath = root.resolve(newFileName).normalize();
+
     Files.copy(file.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
 
-    // Trả về path tuyệt đối sạch
-    return filePath.toAbsolutePath().toString();
+    // Trả về route public (/files/**)
+    return "/files/" + newFileName;
   }
 
   // Upload nhiều file local
