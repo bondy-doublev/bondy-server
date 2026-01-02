@@ -7,11 +7,16 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import org.example.commonweb.DTO.core.AppApiResponse;
 import org.example.interactionservice.config.security.ContextUser;
 import org.example.interactionservice.dto.request.CreateReelRequest;
 import org.example.interactionservice.dto.request.UpdateReelVisibilityRequest;
 import org.example.interactionservice.dto.response.ReelResponse;
 import org.example.interactionservice.service.ReelService;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -204,5 +209,17 @@ public class ReelController {
   public ResponseEntity<List<ReelResponse>> getAllReels(@RequestParam Long requesterId,
                                                         @RequestParam(required = false) Long ownerId) {
     return ResponseEntity.ok(reelService.getAllReels(requesterId, ownerId));
+  }
+
+  @Operation(
+    summary = "Get public reels for public users (paginated)",
+    description = "Returns PUBLIC reels on the site (not deleted, not expired), sorted by createdAt desc."
+  )
+  @GetMapping("/public")
+  public AppApiResponse getPublicReels(
+    @PageableDefault(page = 0, size = 20, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable
+  ) {
+    Page<ReelResponse> page = reelService.getPublicReels(pageable);
+    return new AppApiResponse(page.getContent());
   }
 }

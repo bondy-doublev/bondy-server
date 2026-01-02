@@ -2,6 +2,8 @@ package org.example.interactionservice.repository;
 
 import org.example.interactionservice.entity.Reel;
 import org.example.interactionservice.enums.ReelVisibility;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 
@@ -58,4 +60,6 @@ public interface ReelRepository extends JpaRepository<Reel, Long> {
        ORDER BY r.createdAt DESC
     """)
   List<Reel> findAllNotDeletedByOwnerIn(List<Long> ownerIds);
+
+  Page<Reel> findAllByVisibilityTypeAndIsDeletedFalseAndExpiresAtAfter(ReelVisibility visibilityType, LocalDateTime now, Pageable pageable);
 }

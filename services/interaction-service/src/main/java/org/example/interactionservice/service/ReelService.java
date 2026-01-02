@@ -18,6 +18,7 @@ import org.example.interactionservice.repository.ReelAllowedUserRepository;
 import org.example.interactionservice.repository.ReelReadUserRepository;
 import org.example.interactionservice.repository.ReelRepository;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
@@ -116,41 +117,6 @@ public class ReelService {
     UserBasicResponse owner = authClient.getBasicProfile(reel.getUserId());
     return reel.toResponse(owner, true, false, List.of());
   }
-
-//  @Transactional
-//  public List<ReelResponse> getVisibleReels(Long viewerId, Long ownerId) {
-//    LocalDateTime now = LocalDateTime.now();
-//
-//    Set<Long> friendIds = getFriendIds(viewerId);
-//    Set<Long> targetOwners = resolveTargetOwners(viewerId, ownerId, friendIds);
-//    if (targetOwners.isEmpty()) return List.of();
-//
-//    List<Reel> reels = new ArrayList<>();
-//    for (Long oId : targetOwners) {
-//      reels.addAll(reelRepository.findAliveByOwner(oId, now));
-//    }
-//
-//    List<Reel> visibleReels = reels.stream()
-//      .filter(r -> !r.getIsDeleted())
-//      .filter(r -> canViewReelIgnoringExpiry(r, viewerId, friendIds)) // alive variant also valid
-//      .toList();
-//
-//    if (visibleReels.isEmpty()) return List.of();
-//
-//    Map<Long, UserBasicResponse> ownerMap = loadOwnerProfiles(visibleReels);
-//
-//    List<Long> reelIds = visibleReels.stream().map(Reel::getId).toList();
-//    Map<Long, List<Long>> readIdMap = buildReadUserIdMap(reelIds);
-//    Map<Long, List<UserBasicResponse>> readUsersProfileMap = buildReadUserProfileMap(readIdMap);
-//
-//    return visibleReels.stream()
-//      .map(r -> {
-//        List<UserBasicResponse> readUsers = readUsersProfileMap.getOrDefault(r.getId(), List.of());
-//        boolean isRead = readUsers.stream().anyMatch(u -> Objects.equals(u.getId(), viewerId));
-//        return r.toResponse(ownerMap.get(r.getUserId()), true, isRead, readUsers);
-//      })
-//      .toList();
-//  }
 
   @Transactional
   public List<ReelResponse> getAllReels(Long viewerId, Long ownerId) {
@@ -354,5 +320,31 @@ public class ReelService {
         return r.toResponse(ownerMap.get(r.getUserId()), true, isRead, readUsers);
       })
       .toList();
+  }
+
+  @Transactional
+  public Page<ReelResponse> getPublicReels(Pageable pageable) {
+    LocalDateTime now = LocalDateTime.now();
+
+    Page<Reel> page = reelRepository.findAllByVisibilityTypeAndIsDeletedFalseAndExpiresAtAfter(ReelVisibility.PUBLIC, now, pageable);
+
+    if (page.isEmpty()) {
+      return Page.empty(pageable);
+    }
+
+    List<Reel> reels = page.getContent();
+    Map<Long, UserBasicResponse> ownerMap = loadOwnerProfiles(reels);
+
+    List<ReelResponse> content = reels.stream()
+      .map(r -> {
+        UserBasicResponse owner = ownerMap.get(r.getUserId());
+        if (owner == null) {
+          owner = UserBasicResponse.builder().id(r.getUserId()).fullName("unknown").build();
+        }
+        return r.toResponse(owner, true);
+      })
+      .toList();
+
+    return new PageImpl<>(content, pageable, page.getTotalElements());
   }
 }
