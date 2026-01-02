@@ -23,10 +23,24 @@ async function bootstrap() {
             transformOptions: {enableImplicitConversion: true},
         }),
     );
+    
+    const corsOrigins = process.env.CORS_ORIGINS
+        ? process.env.CORS_ORIGINS.split(',').map(o => o.trim())
+        : [];
+
     app.enableCors({
-        origin: 'http://localhost:3000',
-        credentials: true,
+        origin: (origin, callback) => {
+            if (!origin) return callback(null, true);
+
+            if (corsOrigins.includes(origin)) {
+                return callback(null, true);
+            }
+
+            return callback(new Error(`CORS blocked for origin: ${origin}`), false);
+        },
+        credentials: process.env.CORS_CREDENTIALS === 'true',
     });
+
 
     const port = Number(process.env.SERVER_PORT);
 
