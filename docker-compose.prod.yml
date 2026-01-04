@@ -89,7 +89,7 @@ services:
       config-server:
         condition: service_healthy
     healthcheck:
-      test: [ "CMD-SHELL", "wget -qO- http://communication-service:9086/actuator/health" ]
+      test: [ "CMD-SHELL", "wget -qO- http://communication-service:8086/actuator/health" ]
       interval: 20s
       timeout: 5s
       retries: 10
