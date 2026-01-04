@@ -8,4 +8,6 @@ RUN npm install --omit=dev
 
 COPY . .
 
+EXPOSE 8086
+
 CMD ["node", "dist/main.js"]
