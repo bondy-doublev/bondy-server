@@ -64,6 +64,7 @@ public class JwtFilter implements GlobalFilter {
     try {
       jws = jwtService.validate(token);
     } catch (JwtException e) {
+      log.error("Jwt error: ", e);
       return FilterUtil.unauthorized(exchange, e.getMessage());
     }
 
