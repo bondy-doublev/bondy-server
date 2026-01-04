@@ -60,7 +60,7 @@ public class UploadClient {
           : MediaType.APPLICATION_OCTET_STREAM);
     }
 
-    String addressUpload = environment.equals("Production") ? "local" : "cloudinary";
+    String addressUpload = !environment.equals("production") ? "cloudinary" : "local";
 
     AppApiResponse<List<String>> response = webClientBuilder.build()
       .post()
