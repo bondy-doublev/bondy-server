@@ -89,7 +89,11 @@ public class ApiKeyFilter implements GlobalFilter {
 
         return chain.filter(exchange.mutate().request(mutated).build());
       })
-      .onErrorResume(e -> FilterUtil.unauthorized(exchange, "Auth service error"));
+      .onErrorResume(e -> {
+        log.error("Auth service error: ", e);
+
+        return FilterUtil.unauthorized(exchange, "Auth service error");
+      });
   }
 
   private boolean isPublic(String path) {
