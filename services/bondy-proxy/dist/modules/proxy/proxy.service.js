@@ -49,6 +49,7 @@ let ProxyService = class ProxyService {
                 const forwardHeaders = {
                     ...req.headers,
                     'x-api-key': key,
+                    cookie: req.headers.cookie,
                 };
                 console.log('--- Axios Final Headers ---', forwardHeaders);
                 const response = await (0, axios_1.default)({

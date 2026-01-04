@@ -26,16 +26,16 @@ import java.time.ZoneId;
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class AuthController {
   IAuthService authService;
+  CookieUtil cookieUtil;
 
   @PostMapping("/login")
   AppApiResponse login(@RequestBody @Valid LoginRequest request,
                        HttpServletResponse response) {
     AuthResponse authResponse = authService.login(request);
-    System.out.println("Login");
 
     RefreshTokenDto token = authResponse.getRefreshToken();
 
-    CookieUtil.addRefreshCookie(
+    cookieUtil.addRefreshCookie(
       response,
       authResponse.getUser().getId(),
       token.getToken(),
@@ -52,7 +52,7 @@ public class AuthController {
 
     RefreshTokenDto token = authResponse.getRefreshToken();
 
-    CookieUtil.addRefreshCookie(
+    cookieUtil.addRefreshCookie(
       response,
       authResponse.getUser().getId(),
       token.getToken(),
@@ -69,7 +69,7 @@ public class AuthController {
     AuthResponse authResponse = authService.refreshToken(Long.parseLong(userId), refreshToken);
     RefreshTokenDto token = authResponse.getRefreshToken();
 
-    CookieUtil.addRefreshCookie(
+    cookieUtil.addRefreshCookie(
       response,
       authResponse.getUser().getId(),
       token.getToken(),

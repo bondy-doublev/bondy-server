@@ -1,4 +1,3 @@
-// src/modules/chat/chat.module.ts
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ChatRoom } from 'src/entities/chat-room.entity';

@@ -6,8 +6,8 @@ async function bootstrap() {
 
   // Dynamic CORS
   const allowedOrigins = Object.keys(process.env)
-    .filter(key => /^API\d+_CLIENT_URL$/.test(key))
-    .map(key => process.env[key]!)
+    .filter((key) => /^API\d+_CLIENT_URL$/.test(key))
+    .map((key) => process.env[key]!)
     .filter(Boolean);
 
   app.enableCors({

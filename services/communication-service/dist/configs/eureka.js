@@ -16,7 +16,7 @@ exports.eurekaClient = new eureka_js_client_1.Eureka({
         app: 'communication-service',
         instanceId: `${os_1.default.hostname()}:communication-service:${SERVER_PORT}`,
         hostName: HOST,
-        ipAddr: HOST,
+        ipAddr: '127.0.0.1',
         preferIpAddress: false,
         statusPageUrl: `http://${HOST}:${ACTUATOR_PORT}/actuator/info`,
         port: {

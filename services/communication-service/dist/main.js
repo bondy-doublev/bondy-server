@@ -84,7 +84,7 @@ async function bootstrap() {
     actuatorApp.get('/actuator/health', (_req, res) => {
         res.json({ status: 'UP' });
     });
-    actuatorApp.listen(Number(process.env.ACTUATOR_PORT), process.env.HOST, () => {
+    actuatorApp.listen(Number(process.env.ACTUATOR_PORT), process.env.HOST || 'localhost', () => {
         console.log(`Actuator running on port ${process.env.ACTUATOR_PORT}`);
     });
     eureka_1.eurekaClient.start((error) => {
