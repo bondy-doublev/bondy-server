@@ -10,5 +10,7 @@ export declare class ChatGateway implements OnGatewayConnection {
     handleSend(data: any): Promise<void>;
     handleEdit(data: any): Promise<void>;
     handleDelete(data: any): Promise<void>;
+    handleRead(data: any): Promise<void>;
+    handleMarkAllAsRead({ userId, roomId }: any): Promise<void>;
     handleOpenRoom({ userId, roomId }: any, socket: Socket): Promise<void>;
 }

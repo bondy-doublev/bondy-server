@@ -11,6 +11,10 @@ const common_1 = require("@nestjs/common");
 const typeorm_1 = require("@nestjs/typeorm");
 const chat_module_1 = require("./modules/chat/chat.module");
 const app_controller_1 = require("./app.controller");
+const advert_module_1 = require("./modules/advert/advert.module");
+const mail_module_1 = require("./modules/mail/mail.module");
+const momo_module_1 = require("./modules/payment/momo/momo.module");
+const vnpay_module_1 = require("./modules/payment/vnpay/vnpay.module");
 const config_1 = require("@nestjs/config");
 let AppModule = class AppModule {
 };
@@ -32,6 +36,10 @@ exports.AppModule = AppModule = __decorate([
                 synchronize: true,
             }),
             chat_module_1.ChatModule,
+            advert_module_1.AdvertModule,
+            mail_module_1.MailModule,
+            momo_module_1.MomoModule,
+            vnpay_module_1.BondyVnpayModule,
         ],
         controllers: [app_controller_1.AppController],
     })

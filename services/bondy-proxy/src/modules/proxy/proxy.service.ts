@@ -36,7 +36,7 @@ export class ProxyService {
     console.log('🚀 Proxy Forward');
     console.log('API Name:', apiName);
     console.log('Target URL:', fullUrl);
-    console.log('Using API KEY:', key);  // ⚡ LOG ENV
+    console.log('Using API KEY:', key); // ⚡ LOG ENV
     console.log('Method:', method);
     console.log('Content-Type:', contentType);
     console.log('Headers:', req.headers);
@@ -51,6 +51,7 @@ export class ProxyService {
         const forwardHeaders = {
           ...req.headers,
           'x-api-key': key,
+          cookie: req.headers.cookie,
         };
 
         console.log('--- Axios Final Headers ---', forwardHeaders);
@@ -109,5 +110,4 @@ export class ProxyService {
       );
     }
   }
-
 }

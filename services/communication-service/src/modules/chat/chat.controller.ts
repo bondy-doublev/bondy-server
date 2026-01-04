@@ -1,4 +1,3 @@
-// src/modules/chat/chat.controller.ts
 import {
   Controller,
   Get,

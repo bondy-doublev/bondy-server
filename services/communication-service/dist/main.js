@@ -54,19 +54,9 @@ async function bootstrap() {
         transform: true,
         transformOptions: { enableImplicitConversion: true },
     }));
-    const corsOrigins = process.env.CORS_ORIGINS
-        ? process.env.CORS_ORIGINS.split(',').map(o => o.trim())
-        : [];
     app.enableCors({
-        origin: (origin, callback) => {
-            if (!origin)
-                return callback(null, true);
-            if (corsOrigins.includes(origin)) {
-                return callback(null, true);
-            }
-            return callback(new Error(`CORS blocked for origin: ${origin}`), false);
-        },
-        credentials: process.env.CORS_CREDENTIALS === 'true',
+        origin: 'http://localhost:3000',
+        credentials: true,
     });
     const port = Number(process.env.SERVER_PORT);
     const config = new swagger_1.DocumentBuilder()
@@ -94,7 +84,7 @@ async function bootstrap() {
     actuatorApp.get('/actuator/health', (_req, res) => {
         res.json({ status: 'UP' });
     });
-    actuatorApp.listen(Number(process.env.ACTUATOR_PORT), process.env.HOST, () => {
+    actuatorApp.listen(Number(process.env.ACTUATOR_PORT), process.env.HOST || 'localhost', () => {
         console.log(`Actuator running on port ${process.env.ACTUATOR_PORT}`);
     });
     eureka_1.eurekaClient.start((error) => {

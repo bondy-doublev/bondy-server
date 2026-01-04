@@ -162,13 +162,21 @@ public class AuthService implements IAuthService {
   @Override
   public AuthResponse refreshToken(Long userId, String rawToken) {
     User user = userRepo.findById(userId)
-      .orElseThrow(() -> new AppException(ErrorCode.UNAUTHORIZED, "Invalid refresh info"));
+      .orElseThrow(() -> new AppException(ErrorCode.UNAUTHORIZED, "Invalid refresh info (userID)"));
 
     String tokenHash = refreshTokenRepo.findValidByUserId(userId)
-      .orElseThrow(() -> new AppException(ErrorCode.UNAUTHORIZED, "Invalid refresh info"));
+      .orElseThrow(() -> new AppException(ErrorCode.UNAUTHORIZED, "Invalid refresh info (userID) token"));
 
-    if (!passwordEncoder.matches(rawToken, tokenHash))
-      throw new AppException(ErrorCode.UNAUTHORIZED, "Invalid refresh info");
+    // LOG để debug
+    System.out.println("Client gửi token: " + rawToken);
+    System.out.println("Token hash DB: " + tokenHash);
+
+    boolean match = passwordEncoder.matches(rawToken, tokenHash);
+    System.out.println("passwordEncoder.matches result: " + match);
+
+    if (!match) {
+      throw new AppException(ErrorCode.UNAUTHORIZED, "Invalid refresh info (match)");
+    }
 
     return buildAuthResponse(user);
   }

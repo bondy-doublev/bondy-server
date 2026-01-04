@@ -5,8 +5,8 @@ const app_module_1 = require("./app.module");
 async function bootstrap() {
     const app = await core_1.NestFactory.create(app_module_1.AppModule);
     const allowedOrigins = Object.keys(process.env)
-        .filter(key => /^API\d+_CLIENT_URL$/.test(key))
-        .map(key => process.env[key])
+        .filter((key) => /^API\d+_CLIENT_URL$/.test(key))
+        .map((key) => process.env[key])
         .filter(Boolean);
     app.enableCors({
         origin: (origin, callback) => {

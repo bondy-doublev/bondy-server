@@ -67,28 +67,34 @@ export class ChatGateway implements OnGatewayConnection {
       data,
     );
 
-    // ✅ Emit to room (all members will receive)
+    // ✅ Emit message to room
     this.server.to(data.roomId).emit('newMessage', msg);
     console.log('📨 New message sent to room', data.roomId);
 
+    // ✅ Mark as read for sender
     await this.chatService.markAllAsRead(data.senderId.toString(), data.roomId);
 
-    // Update unread badge
+    // ✅ Update badge for all members
     const roomMembers = await this.chatService.memberRepo.find({
       where: { room: { id: data.roomId } },
       relations: ['room'],
     });
 
     roomMembers.forEach(async (m) => {
-      // Skip sender
-      if (m.userId === data.senderId) return;
+      // Skip sender (their badge should be 0)
+      if (m.userId === data.senderId) {
+        this.server
+          .to(m.userId.toString())
+          .emit('updateUnreadBadge', { roomId: data.roomId, count: 0 });
+        return;
+      }
 
+      // Count unread for other members
       const count = await this.chatService.getUnreadMessageCount(
         m.userId,
         data.roomId,
       );
 
-      // Emit to personal room
       this.server
         .to(m.userId.toString())
         .emit('updateUnreadBadge', { roomId: data.roomId, count });
@@ -106,6 +112,7 @@ export class ChatGateway implements OnGatewayConnection {
     );
     this.server.to(msg.roomId).emit('messageEdited', msg);
 
+    // ✅ Update badge for members who haven't read
     const roomMembers = await this.chatService.memberRepo.find({
       where: { room: { id: msg.roomId } },
       relations: ['room'],
@@ -130,20 +137,66 @@ export class ChatGateway implements OnGatewayConnection {
     this.server.to(msg.roomId).emit('messageDeleted', msg);
   }
 
+  // ✅ RESTORED: Mark single message as read
+  @SubscribeMessage('readMessage')
+  async handleRead(@MessageBody() data: any) {
+    const msg = await this.chatService.markAsRead(data.messageId, data.userId);
+
+    if (msg) {
+      // Emit to room that message was read
+      this.server.to(msg.roomId).emit('messageRead', msg);
+
+      // Update badge for this user
+      const count = await this.chatService.getUnreadMessageCount(
+        data.userId,
+        msg.roomId,
+      );
+
+      this.server
+        .to(data.userId.toString())
+        .emit('updateUnreadBadge', { roomId: msg.roomId, count });
+
+      console.log(
+        `✅ Message ${msg.id} marked as read by user ${data.userId}, new badge: ${count}`,
+      );
+    }
+  }
+
+  // ✅ RESTORED: Mark all messages in room as read
+  @SubscribeMessage('markAllAsRead')
+  async handleMarkAllAsRead(@MessageBody() { userId, roomId }: any) {
+    await this.chatService.markAllAsRead(userId, roomId);
+
+    // Get total unread count across all rooms
+    const totalCount = await this.chatService.getUnreadMessageCount(userId);
+
+    // ✅ Reset badge for this room to 0
+    this.server
+      .to(userId.toString())
+      .emit('updateUnreadBadge', { roomId, count: 0 });
+
+    console.log(
+      `✅ All messages in room ${roomId} marked as read by user ${userId}`,
+    );
+  }
+
+  // ✅ When user opens a room
   @SubscribeMessage('openRoom')
   async handleOpenRoom(
     @MessageBody() { userId, roomId }: any,
     @ConnectedSocket() socket: Socket,
   ) {
+    // Mark all messages as read
     await this.chatService.markAllAsRead(userId.toString(), roomId);
 
-    const count = await this.chatService.getUnreadMessageCount(userId);
+    // Get total unread count (across all rooms)
+    const totalCount = await this.chatService.getUnreadMessageCount(userId);
 
-    this.server.to(userId.toString()).emit('updateUnreadBadge', {
-      roomId,
-      count,
-    });
+    // ✅ Reset badge for this specific room
+    this.server
+      .to(userId.toString())
+      .emit('updateUnreadBadge', { roomId, count: 0 });
 
-    console.log(`✅ User ${userId} opened room ${roomId}, badge reset`);
+    console.log(`✅ User ${userId} opened room ${roomId}, badge reset to 0`);
   }
 }
