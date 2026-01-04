@@ -3,18 +3,24 @@ import * as dotenv from 'dotenv';
 import { AppModule } from './app.module';
 import { eurekaClient } from './configs/eureka';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
-import express from 'express';
 import { ValidationPipe } from '@nestjs/common';
+import express from 'express';
 import * as process from 'node:process';
 
 dotenv.config();
 
 async function bootstrap() {
+  const SERVER_PORT = Number(process.env.SERVER_PORT) || 8080;
+  const ACTUATOR_PORT = Number(process.env.ACTUATOR_PORT) || 9086;
+  const HOST = process.env.HOST || '0.0.0.0';
+
+  // ==== NestJS App ====
   const app = await NestFactory.create(AppModule);
 
   // Body parser
   app.use(express.json());
 
+  // Validation pipe
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
@@ -24,6 +30,7 @@ async function bootstrap() {
     }),
   );
 
+  // CORS
   const corsOrigins = (process.env.CORS_ORIGINS || '')
     .split(',')
     .map((o) => o.trim())
@@ -31,28 +38,21 @@ async function bootstrap() {
 
   app.enableCors({
     origin: (origin, callback) => {
-      // Cho phép request không có origin (curl, server-to-server, healthcheck)
-      if (!origin) return callback(null, true);
-
-      if (corsOrigins.includes(origin)) {
-        return callback(null, true);
-      }
-
+      if (!origin) return callback(null, true); // curl, healthcheck
+      if (corsOrigins.includes(origin)) return callback(null, true);
       return callback(new Error(`CORS blocked for origin: ${origin}`), false);
     },
     credentials: process.env.CORS_CREDENTIALS === 'true',
   });
 
-  const port = Number(process.env.SERVER_PORT);
-
-  // ===== Swagger setup =====
+  // ==== Swagger setup ====
   const config = new DocumentBuilder()
     .setTitle('Communication Service API')
     .setDescription('REST API for Bondy')
     .setVersion('v1')
     .addBearerAuth(
       { type: 'http', scheme: 'bearer', bearerFormat: 'JWT', in: 'header' },
-      'Bearer', // ← định danh của auth
+      'Bearer',
     )
     .addApiKey({ type: 'apiKey', name: 'X-API-KEY', in: 'header' }, 'API Key')
     .addServer('/api/v1', 'Via Gateway')
@@ -61,36 +61,34 @@ async function bootstrap() {
 
   const document = SwaggerModule.createDocument(app, config);
 
-  // ✅ Cấu hình Swagger UI
+  // Swagger UI
   SwaggerModule.setup('docs/communication', app, document, {
     swaggerOptions: {
-      persistAuthorization: true, // nhớ token sau khi reload
-      docExpansion: 'none', // thu gọn các endpoint
+      persistAuthorization: true,
+      docExpansion: 'none',
     },
   });
 
-  // ✅ JSON docs (Gateway lấy để tổng hợp)
-  app.use('/v3/api-docs', express.json(), (req, res) => {
+  // JSON docs (Gateway hoặc client có thể lấy)
+  app.use('/v3/api-docs', (_req, res) => {
     res.json(document);
   });
 
-  await app.listen(port, '0.0.0.0');
-  console.log(`🚀 Communication Service running on port ${port}`);
+  // ==== Start NestJS App ====
+  await app.listen(SERVER_PORT, HOST);
+  console.log(`🚀 Communication Service running on port ${SERVER_PORT}`);
 
+  // ==== Actuator (Express) ====
   const actuatorApp = express();
   actuatorApp.get('/actuator/health', (_req, res) => {
     res.json({ status: 'UP' });
   });
 
-  actuatorApp.listen(
-    Number(process.env.ACTUATOR_PORT),
-    process.env.HOST || 'localhost',
-    () => {
-      console.log(`Actuator running on port ${process.env.ACTUATOR_PORT}`);
-    },
-  );
+  actuatorApp.listen(ACTUATOR_PORT, HOST, () => {
+    console.log(`Actuator running on port ${ACTUATOR_PORT}`);
+  });
 
-  // ===== Register Eureka =====
+  // ==== Register Eureka ====
   eurekaClient.start((error) => {
     if (error) console.error('❌ Eureka registration failed:', error);
     else console.log('✅ Registered to Eureka');

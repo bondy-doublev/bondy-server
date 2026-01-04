@@ -41,11 +41,14 @@ const dotenv = __importStar(require("dotenv"));
 const app_module_1 = require("./app.module");
 const eureka_1 = require("./configs/eureka");
 const swagger_1 = require("@nestjs/swagger");
-const express_1 = __importDefault(require("express"));
 const common_1 = require("@nestjs/common");
+const express_1 = __importDefault(require("express"));
 const process = __importStar(require("node:process"));
 dotenv.config();
 async function bootstrap() {
+    const SERVER_PORT = Number(process.env.SERVER_PORT) || 8080;
+    const ACTUATOR_PORT = Number(process.env.ACTUATOR_PORT) || 9086;
+    const HOST = process.env.HOST || '0.0.0.0';
     const app = await core_1.NestFactory.create(app_module_1.AppModule);
     app.use(express_1.default.json());
     app.useGlobalPipes(new common_1.ValidationPipe({
@@ -62,14 +65,12 @@ async function bootstrap() {
         origin: (origin, callback) => {
             if (!origin)
                 return callback(null, true);
-            if (corsOrigins.includes(origin)) {
+            if (corsOrigins.includes(origin))
                 return callback(null, true);
-            }
             return callback(new Error(`CORS blocked for origin: ${origin}`), false);
         },
         credentials: process.env.CORS_CREDENTIALS === 'true',
     });
-    const port = Number(process.env.SERVER_PORT);
     const config = new swagger_1.DocumentBuilder()
         .setTitle('Communication Service API')
         .setDescription('REST API for Bondy')
@@ -86,17 +87,17 @@ async function bootstrap() {
             docExpansion: 'none',
         },
     });
-    app.use('/v3/api-docs', express_1.default.json(), (req, res) => {
+    app.use('/v3/api-docs', (_req, res) => {
         res.json(document);
     });
-    await app.listen(port, '0.0.0.0');
-    console.log(`🚀 Communication Service running on port ${port}`);
+    await app.listen(SERVER_PORT, HOST);
+    console.log(`🚀 Communication Service running on port ${SERVER_PORT}`);
     const actuatorApp = (0, express_1.default)();
     actuatorApp.get('/actuator/health', (_req, res) => {
         res.json({ status: 'UP' });
     });
-    actuatorApp.listen(Number(process.env.ACTUATOR_PORT), process.env.HOST || 'localhost', () => {
-        console.log(`Actuator running on port ${process.env.ACTUATOR_PORT}`);
+    actuatorApp.listen(ACTUATOR_PORT, HOST, () => {
+        console.log(`Actuator running on port ${ACTUATOR_PORT}`);
     });
     eureka_1.eurekaClient.start((error) => {
         if (error)
