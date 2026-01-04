@@ -74,7 +74,7 @@ async function bootstrap() {
     res.json(document);
   });
 
-  await app.listen(port);
+  await app.listen(port, '0.0.0.0');
   console.log(`🚀 Communication Service running on port ${port}`);
 
   const actuatorApp = express();

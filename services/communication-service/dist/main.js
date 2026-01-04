@@ -89,7 +89,7 @@ async function bootstrap() {
     app.use('/v3/api-docs', express_1.default.json(), (req, res) => {
         res.json(document);
     });
-    await app.listen(port);
+    await app.listen(port, '0.0.0.0');
     console.log(`🚀 Communication Service running on port ${port}`);
     const actuatorApp = (0, express_1.default)();
     actuatorApp.get('/actuator/health', (_req, res) => {
