@@ -111,4 +111,13 @@ public class AuthController {
 
     return new AppApiResponse(response);
   }
+
+  @PostMapping("/logout")
+  AppApiResponse logout(HttpServletResponse response) {
+    AuthResponse res = authService.logout(ContextUser.get().getUserId());
+
+    cookieUtil.clearRefreshCookie(response);
+
+    return new AppApiResponse(res);
+  }
 }
