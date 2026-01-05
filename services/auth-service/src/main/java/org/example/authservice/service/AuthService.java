@@ -84,7 +84,8 @@ public class AuthService implements IAuthService {
 
       sendWelcomeMail(newUser, rawPassword, oauthProvider);
 
-      AuthResponse tokenResponse = buildAuthResponse(newUser);
+      String sessionId = UUID.randomUUID().toString();
+      AuthResponse tokenResponse = buildAuthResponse(newUser, sessionId);
 
       return AuthResponse.builder()
         .accessToken(tokenResponse.getAccessToken())
@@ -122,7 +123,8 @@ public class AuthService implements IAuthService {
     }
 
     userRepo.save(user);
-    AuthResponse tokenResponse = buildAuthResponse(user);
+    String sessionId = UUID.randomUUID().toString();
+    AuthResponse tokenResponse = buildAuthResponse(user, sessionId);
 
     return AuthResponse.builder()
       .accessToken(tokenResponse.getAccessToken())
@@ -149,7 +151,8 @@ public class AuthService implements IAuthService {
     if (!passwordEncoder.matches(request.getPassword(), localAccount.getPasswordHash()))
       throw new AppException(ErrorCode.BAD_REQUEST, errorMessage);
 
-    AuthResponse tokenResponse = buildAuthResponse(user);
+    String sessionId = UUID.randomUUID().toString();
+    AuthResponse tokenResponse = buildAuthResponse(user, sessionId);
 
     return AuthResponse.builder()
       .accessToken(tokenResponse.getAccessToken())
@@ -160,26 +163,26 @@ public class AuthService implements IAuthService {
 
 
   @Override
-  public AuthResponse refreshToken(Long userId, String rawToken) {
-    User user = userRepo.findById(userId)
-      .orElseThrow(() -> new AppException(ErrorCode.UNAUTHORIZED, "Invalid refresh info (userID)"));
+  @Transactional
+  public AuthResponse refreshToken(Long userId, String sessionId, String rawToken) {
 
-    String tokenHash = refreshTokenRepo.findValidByUserId(userId)
-      .orElseThrow(() -> new AppException(ErrorCode.UNAUTHORIZED, "Invalid refresh info (userID) token"));
+    RefreshToken rt = refreshTokenRepo
+      .findValidByUserIdAndSessionId(userId, sessionId)
+      .orElseThrow(() -> new AppException(
+        ErrorCode.UNAUTHORIZED,
+        "Invalid refresh session"
+      ));
 
-    // LOG để debug
-    System.out.println("Client gửi token: " + rawToken);
-    System.out.println("Token hash DB: " + tokenHash);
-
-    boolean match = passwordEncoder.matches(rawToken, tokenHash);
-    System.out.println("passwordEncoder.matches result: " + match);
-
-    if (!match) {
-      throw new AppException(ErrorCode.UNAUTHORIZED, "Invalid refresh info (match)");
+    if (!passwordEncoder.matches(rawToken, rt.getTokenHash())) {
+      throw new AppException(ErrorCode.UNAUTHORIZED, "Invalid refresh token");
     }
 
-    return buildAuthResponse(user);
+    User user = userRepo.findById(userId)
+      .orElseThrow(() -> new AppException(ErrorCode.UNAUTHORIZED, "Invalid user"));
+
+    return buildAuthResponse(user, sessionId);
   }
+
 
   @Override
   @Transactional
@@ -344,9 +347,9 @@ public class AuthService implements IAuthService {
       : "11111111";
   }
 
-  private AuthResponse buildAuthResponse(User user) {
+  private AuthResponse buildAuthResponse(User user, String sessionId) {
     var accessToken = jwtService.generateAccessToken(user);
-    var refreshToken = generateRefreshToken(user);
+    var refreshToken = generateRefreshToken(user, sessionId);
 
     return AuthResponse.builder()
       .accessToken(accessToken)
@@ -355,23 +358,29 @@ public class AuthService implements IAuthService {
       .build();
   }
 
-  private RefreshTokenDto generateRefreshToken(User userDto) {
-    var token = UUID.randomUUID().toString();
-    var tokenHash = passwordEncoder.encode(token);
+  private RefreshTokenDto generateRefreshToken(User userDto, String sessionId) {
 
-    User user = new User();
-    user.setId(userDto.getId());
+    String rawToken = UUID.randomUUID().toString();
+    String tokenHash = passwordEncoder.encode(rawToken);
+
+    refreshTokenRepo.revokeByUserIdAndSessionId(
+      userDto.getId(),
+      sessionId,
+      LocalDateTime.now()
+    );
 
     RefreshToken newToken = RefreshToken.builder()
+      .user(userDto)
+      .sessionId(sessionId)
       .tokenHash(tokenHash)
-      .user(user)
       .expiresAt(LocalDateTime.now().plusDays(props.getJwt().getRefreshTtl()))
       .build();
 
-    refreshTokenRepo.revokeTokens(user.getId(), LocalDateTime.now());
     refreshTokenRepo.save(newToken);
-    return new RefreshTokenDto(token, newToken.getExpiresAt());
+
+    return new RefreshTokenDto(sessionId, rawToken, newToken.getExpiresAt());
   }
+
 
   private void sendRegistrationWelcomeMail(User user) {
     MailRequest mail = MailRequest.builder()

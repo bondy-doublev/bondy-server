@@ -18,19 +18,22 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 public class RefreshToken extends BaseEntity {
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", nullable = false)
-    @EqualsAndHashCode.Exclude
-    User user;
+  @ManyToOne(fetch = FetchType.LAZY)
+  @JoinColumn(name = "user_id", nullable = false)
+  @EqualsAndHashCode.Exclude
+  User user;
 
-    @Column(name = "token_hash")
-    String tokenHash;
+  @Column(name = "token_hash")
+  String tokenHash;
 
-    Boolean revoked = false;
+  Boolean revoked = false;
 
-    @Column(name = "revoked_at")
-    LocalDateTime revokedAt;
+  @Column(name = "revoked_at")
+  LocalDateTime revokedAt;
 
-    @Column(name = "expires_at")
-    LocalDateTime expiresAt;
+  @Column(name = "expires_at")
+  LocalDateTime expiresAt;
+
+  @Column(name = "session_id")
+  String sessionId;
 }

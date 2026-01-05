@@ -11,6 +11,7 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class RefreshTokenDto {
-    String token;
-    LocalDateTime expiresAt;
+  String sessionId;
+  String token;
+  LocalDateTime expiresAt;
 }
