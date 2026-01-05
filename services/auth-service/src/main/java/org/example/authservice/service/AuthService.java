@@ -331,6 +331,13 @@ public class AuthService implements IAuthService {
     return new MessageResponse("Reset password successfully");
   }
 
+  @Override
+  public AuthResponse logout(long userId) {
+    refreshTokenRepo.revokeTokens(userId, LocalDateTime.now());
+
+    return new AuthResponse();
+  }
+
   private String generateDefaultPassword(String firstName) {
     return props.getEnvironment().equals("production")
       ? firstName + props.getUser().getDefaultPasswordSuffix()
@@ -358,7 +365,7 @@ public class AuthService implements IAuthService {
     RefreshToken newToken = RefreshToken.builder()
       .tokenHash(tokenHash)
       .user(user)
-      .expiresAt(LocalDateTime.now().plusDays(7))
+      .expiresAt(LocalDateTime.now().plusDays(props.getJwt().getRefreshTtl()))
       .build();
 
     refreshTokenRepo.revokeTokens(user.getId(), LocalDateTime.now());

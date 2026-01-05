@@ -20,4 +20,6 @@ public interface IAuthService {
   MessageResponse sendResetPasswordOtp(String email);
 
   MessageResponse resetPassword(ResetPasswordRequest request);
+
+  AuthResponse logout(long userId);
 }
