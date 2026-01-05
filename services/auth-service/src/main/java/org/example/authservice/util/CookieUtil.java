@@ -26,19 +26,25 @@ public class CookieUtil {
     HttpServletResponse resp,
     Long userId,
     String token,
+    String sessionId,
     Instant exp
   ) {
 
     Duration maxAge = Duration.between(Instant.now(), exp);
-
     boolean isProd = isProd();
-
-    System.out.println("environment: " + isProd);
 
     ResponseCookie refreshTokenCookie = ResponseCookie.from("refreshToken", token)
       .httpOnly(true)
-      .secure(isProd)                     // PROD=true, LOCAL=false
-      .sameSite(isProd ? "None" : "Lax")  // PROD=None, LOCAL=Lax
+      .secure(isProd)
+      .sameSite(isProd ? "None" : "Lax")
+      .path("/")
+      .maxAge(maxAge)
+      .build();
+
+    ResponseCookie sessionIdCookie = ResponseCookie.from("sessionId", sessionId)
+      .httpOnly(true)                     // 👈 HttpOnly để tránh XSS
+      .secure(isProd)
+      .sameSite(isProd ? "None" : "Lax")
       .path("/")
       .maxAge(maxAge)
       .build();
@@ -52,6 +58,7 @@ public class CookieUtil {
       .build();
 
     resp.addHeader(HttpHeaders.SET_COOKIE, refreshTokenCookie.toString());
+    resp.addHeader(HttpHeaders.SET_COOKIE, sessionIdCookie.toString());
     resp.addHeader(HttpHeaders.SET_COOKIE, userIdCookie.toString());
   }
 
@@ -60,6 +67,14 @@ public class CookieUtil {
     boolean isProd = isProd();
 
     ResponseCookie refreshTokenCookie = ResponseCookie.from("refreshToken", "")
+      .httpOnly(true)
+      .secure(isProd)
+      .sameSite(isProd ? "None" : "Lax")
+      .path("/")
+      .maxAge(0)
+      .build();
+
+    ResponseCookie sessionIdCookie = ResponseCookie.from("sessionId", "")
       .httpOnly(true)
       .secure(isProd)
       .sameSite(isProd ? "None" : "Lax")
@@ -76,6 +91,7 @@ public class CookieUtil {
       .build();
 
     resp.addHeader(HttpHeaders.SET_COOKIE, refreshTokenCookie.toString());
+    resp.addHeader(HttpHeaders.SET_COOKIE, sessionIdCookie.toString());
     resp.addHeader(HttpHeaders.SET_COOKIE, userIdCookie.toString());
   }
 }

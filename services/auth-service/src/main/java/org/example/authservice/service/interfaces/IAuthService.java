@@ -9,7 +9,7 @@ public interface IAuthService {
 
   AuthResponse login(LoginRequest request);
 
-  AuthResponse refreshToken(Long userId, String rawToken);
+  AuthResponse refreshToken(Long userId, String sessionId, String rawToken);
 
   MessageResponse registerInit(RegisterRequest request);
 

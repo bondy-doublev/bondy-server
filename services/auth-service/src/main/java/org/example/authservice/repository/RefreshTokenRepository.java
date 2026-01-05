@@ -32,5 +32,28 @@ public interface RefreshTokenRepository extends JpaRepository<RefreshToken, Long
     """)
   Optional<String> findValidByUserId(@Param("userId") Long userId);
 
-  Long userId(Long userId);
+  @Modifying
+  @Transactional
+  @Query("""
+      update RefreshToken r
+      set r.revoked = true, r.revokedAt = :revokedAt
+      where r.user.id = :userId
+        and r.sessionId = :sessionId
+        and r.revoked = false
+    """)
+  void revokeByUserIdAndSessionId(@Param("userId") Long userId,
+                                  @Param("sessionId") String sessionId,
+                                  @Param("revokedAt") LocalDateTime revokedAt);
+
+  @Query("""
+      SELECT r
+      FROM RefreshToken r
+      WHERE r.user.id = :userId
+        AND r.sessionId = :sessionId
+        AND (r.revoked = false OR r.revoked IS NULL)
+        AND r.expiresAt > CURRENT_TIMESTAMP
+    """)
+  Optional<RefreshToken> findValidByUserIdAndSessionId(@Param("userId") Long userId,
+                                                       @Param("sessionId") String sessionId);
+
 }
