@@ -1,9 +1,5 @@
 version: "3.9"
 
-x-timezone-volumes: &timezone-volumes
-  - /etc/localtime:/etc/localtime:ro
-  - /etc/timezone:/etc/timezone:ro
-
 services:
   ### DATABASE ###
   postgres:
@@ -17,7 +13,8 @@ services:
     volumes:
       - pg_data:/var/lib/postgresql/data
       - ./init.sql:/docker-entrypoint-initdb.d/init.sql
-      - *timezone-volumes
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro
     healthcheck:
       test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER}" ]
       interval: 10s
@@ -33,7 +30,8 @@ services:
     ports:
       - "${DISCOVERY_SERVER_HOST_PORT}:8761"
     volumes:
-      - *timezone-volumes
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro
     healthcheck:
       test: [ "CMD", "curl", "-f", "http://localhost:8761/actuator/health" ]
       interval: 20s
@@ -55,7 +53,8 @@ services:
       discovery-server:
         condition: service_healthy
     volumes:
-      - *timezone-volumes
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro
     healthcheck:
       test: [ "CMD", "curl", "-f", "http://localhost:9081/actuator/health" ]
       interval: 20s
@@ -77,9 +76,10 @@ services:
       discovery-server:
         condition: service_healthy
     volumes:
-      - *timezone-volumes
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro
     healthcheck:
-      test: [ "CMD-SHELL", "wget -qO- http://communication-service:9086/actuator/health" ]
+      test: [ "CMD-SHELL", "wget -qO- http://localhost:9086/actuator/health" ]
       interval: 20s
       timeout: 5s
       retries: 10
@@ -99,7 +99,8 @@ services:
       discovery-server:
         condition: service_healthy
     volumes:
-      - *timezone-volumes
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro
     healthcheck:
       test: [ "CMD", "curl", "-f", "http://localhost:9085/actuator/health" ]
       interval: 20s
@@ -121,7 +122,8 @@ services:
       discovery-server:
         condition: service_healthy
     volumes:
-      - *timezone-volumes
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro
     healthcheck:
       test: [ "CMD", "curl", "-f", "http://localhost:9082/actuator/health" ]
       interval: 20s
@@ -143,7 +145,8 @@ services:
       discovery-server:
         condition: service_healthy
     volumes:
-      - *timezone-volumes
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro
     healthcheck:
       test: [ "CMD", "curl", "-f", "http://localhost:9088/actuator/health" ]
       interval: 20s
@@ -165,7 +168,8 @@ services:
       discovery-server:
         condition: service_healthy
     volumes:
-      - *timezone-volumes
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro
     healthcheck:
       test: [ "CMD", "curl", "-f", "http://localhost:9087/actuator/health" ]
       interval: 20s
@@ -183,7 +187,8 @@ services:
       - "${UPLOAD_ACTUATOR_HOST_PORT}:9083"
     volumes:
       - ./uploads:/app/uploads
-      - *timezone-volumes
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro
     depends_on:
       postgres:
         condition: service_healthy
@@ -222,7 +227,8 @@ services:
       upload-service:
         condition: service_healthy
     volumes:
-      - *timezone-volumes
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro
     healthcheck:
       test: [ "CMD", "curl", "-f", "http://localhost:9080/actuator/health" ]
       interval: 20s
@@ -243,7 +249,8 @@ services:
       interaction-service:
         condition: service_healthy
     volumes:
-      - *timezone-volumes
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro
     healthcheck:
       test: [ "CMD", "curl", "-f", "http://localhost:8000/health" ]
       interval: 30s
