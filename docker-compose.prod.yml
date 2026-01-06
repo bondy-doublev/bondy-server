@@ -79,7 +79,7 @@ services:
       - /etc/localtime:/etc/localtime:ro
       - /etc/timezone:/etc/timezone:ro
     healthcheck:
-      test: [ "CMD-SHELL", "wget -qO- http://communication-service:8086/actuator/health" ]
+      test: [ "CMD-SHELL", "wget -qO- http://communication-service:9086/actuator/health" ]
       interval: 20s
       timeout: 5s
       retries: 10
