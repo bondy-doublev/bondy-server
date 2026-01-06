@@ -21,5 +21,5 @@ public interface IAuthService {
 
   MessageResponse resetPassword(ResetPasswordRequest request);
 
-  AuthResponse logout(long userId);
+  AuthResponse logout(long userId, String sessionId);
 }

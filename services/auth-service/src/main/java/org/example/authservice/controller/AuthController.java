@@ -117,8 +117,10 @@ public class AuthController {
   }
 
   @PostMapping("/logout")
-  AppApiResponse logout(HttpServletResponse response) {
-    AuthResponse res = authService.logout(ContextUser.get().getUserId());
+  AppApiResponse logout(@Parameter(hidden = true) @CookieValue(value = "userId") String userId,
+                        @Parameter(hidden = true) @CookieValue(value = "sessionId") String sessionId,
+                        HttpServletResponse response) {
+    AuthResponse res = authService.logout(Long.parseLong(userId), sessionId);
 
     cookieUtil.clearRefreshCookie(response);
 
