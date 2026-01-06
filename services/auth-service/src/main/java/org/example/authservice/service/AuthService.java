@@ -335,8 +335,8 @@ public class AuthService implements IAuthService {
   }
 
   @Override
-  public AuthResponse logout(long userId) {
-    refreshTokenRepo.revokeTokens(userId, LocalDateTime.now());
+  public AuthResponse logout(long userId, String sessionId) {
+    refreshTokenRepo.revokeByUserIdAndSessionId(userId, sessionId, LocalDateTime.now());
 
     return new AuthResponse();
   }
