@@ -1,5 +1,66 @@
+server:
+  port: ${SERVER_PORT}
+
 spring:
   application:
     name: upload-service
-  config:
-    import: optional:configserver:${CONFIG_SERVER_URL}
+  jackson:
+    default-property-inclusion: non_null
+  web:
+    cors:
+      mappings:
+        '[/**]':
+          allowed-origins:
+            - http://localhost:8080
+            - https://gateway.bondy.io.vn
+          #          allowed-origins: "http://gateway:8080"
+          allowed-methods: GET,POST,PUT,PATCH,DELETE,OPTIONS
+          allowed-headers: "*"
+          allow-credentials: true
+          max-age: 3600
+    resources:
+      static-locations: classpath:/static/, file:/app/uploads/
+  servlet:
+    multipart:
+      enabled: true
+      max-file-size: 200MB
+      max-request-size: 300MB
+  main:
+    banner-mode: off
+  mvc:
+    static-path-pattern: /files/**
+
+springdoc:
+  swagger-ui:
+    persistAuthorization: true
+
+management:
+  server:
+    port: ${ACTUATOR_PORT}
+  endpoints:
+    web:
+      exposure:
+        include: health,info,refresh
+  endpoint:
+    refresh:
+      enabled: true
+
+eureka:
+  client:
+    service-url:
+      defaultZone: ${DISCOVERY_URL}/eureka/
+  instance:
+    prefer-ip-address: true
+
+logging:
+  level:
+    root: WARN
+    org.example: INFO
+
+upload:
+  path: /app/uploads
+
+cloudinary:
+  cloud_name: ${CLOUDINARY_NAME}
+  api_key: ${CLOUDINARY_API_KEY}
+  api_secret: ${CLOUDINARY_API_SECRET}
