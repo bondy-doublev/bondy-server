@@ -68,7 +68,7 @@ services:
     env_file:
       - ./services/communication-service/.env.communication.docker
     ports:
-      - "${COMMUNICATION_HOST_PORT}:8080"
+      - "${COMMUNICATION_HOST_PORT}:8086"
       - "${COMMUNICATION_ACTUATOR_HOST_PORT}:9086"
     depends_on:
       postgres:
