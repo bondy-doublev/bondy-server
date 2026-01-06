@@ -1,5 +1,85 @@
+server:
+  port: ${SERVER_PORT}
+
 spring:
   application:
     name: interaction-service
-  config:
-    import: optional:configserver:${CONFIG_SERVER_URL}
+  jackson:
+    default-property-inclusion: non_null
+  datasource:
+    url: jdbc:${DB}://${DB_HOST}:${DB_PORT}/${DB_NAME}
+    username: ${DB_USER}
+    password: ${DB_PASSWORD}
+  flyway:
+    enabled: true
+  jpa:
+    hibernate:
+      naming:
+        physical-strategy: org.hibernate.boot.model.naming.PhysicalNamingStrategyStandardImpl
+  web:
+    cors:
+      mappings:
+        '[/**]':
+          allowed-origins:
+            - http://localhost:8080
+            - https://gateway.bondy.io.vn
+          #          allowed-origins: "http://gateway:8080"
+          allowed-methods: GET,POST,PUT,PATCH,DELETE,OPTIONS
+          allowed-headers: "*"
+          allow-credentials: true
+          max-age: 3600
+  servlet:
+    multipart:
+      enabled: true
+      max-file-size: 200MB
+      max-request-size: 300MB
+  main:
+    banner-mode: off
+
+springdoc:
+  swagger-ui:
+    persistAuthorization: true
+
+management:
+  server:
+    port: ${ACTUATOR_PORT}
+  endpoints:
+    web:
+      exposure:
+        include: health,info,refresh
+  endpoint:
+    refresh:
+      enabled: true
+
+eureka:
+  client:
+    service-url:
+      defaultZone: ${DISCOVERY_URL}/eureka/
+  instance:
+    prefer-ip-address: true
+
+logging:
+  level:
+    root: WARN
+    org.example: INFO
+
+app:
+  environment: ${APP_ENV:dev}
+  api-key:
+    header: ${API_KEY_HEADER}
+    internal: ${INTERNAL_API_KEY}
+  gateway:
+    url: ${GATE_WAY_URL}
+  python:
+    recommend:
+      url: ${RECOMMENDATION_SERVER_URL}
+  post:
+    media-limit: 5
+    image-limit: 5
+    video-limit: 1
+    tag-limit: 10
+    content-limit: 1000
+  notify:
+    max-batch: 200
+    poll-delay: 2000
+    max-loop: 100

@@ -1,8 +1,9 @@
+server:
+  port: ${SERVER_PORT}
+
 spring:
   application:
     name: mail-service
-  config:
-    import: optional:configserver:${CONFIG_SERVER_URL}
   mail:
     host: ${SMTP_HOST:localhost}
     port: ${SMTP_PORT:1025}
@@ -19,3 +20,65 @@ spring:
             protocols: TLSv1.2
   thymeleaf:
     check-template-location: false
+  jackson:
+    default-property-inclusion: non_null
+  web:
+    cors:
+      mappings:
+        '[/**]':
+          allowed-origins:
+            - http://localhost:8080
+            - https://gateway.bondy.io.vn
+          #          allowed-origins: "http://gateway:8080"
+          allowed-methods: GET,POST,PUT,PATCH,DELETE,OPTIONS
+          allowed-headers: "*"
+          allow-credentials: true
+          max-age: 3600
+  servlet:
+    multipart:
+      enabled: true
+      max-file-size: 200MB
+      max-request-size: 300MB
+  main:
+    banner-mode: off
+
+springdoc:
+  swagger-ui:
+    persistAuthorization: true
+
+management:
+  server:
+    port: ${ACTUATOR_PORT}
+  endpoints:
+    web:
+      exposure:
+        include: health,info,refresh
+  endpoint:
+    refresh:
+      enabled: true
+
+eureka:
+  client:
+    service-url:
+      defaultZone: ${DISCOVERY_URL}/eureka/
+  instance:
+    prefer-ip-address: true
+
+logging:
+  level:
+    root: WARN
+    org.example: INFO
+
+
+app:
+  environment: ${APP_ENV}
+  mail:
+    from: ${MAIL_FROM:"Bondy <no-reply@bondy.dev>"}
+    reply-to: ${MAIL_REPLY_TO:support@bondy.dev}
+    base-url: ${MAIL_BASE_URL:https://bondy.dev}
+    template-cache: ${MAIL_TEMPLATE_CACHE:false}
+    subjects:
+      otp_registration: Your verification code
+      password_reset: Reset your password
+      welcome: Welcome to Bondy!
+      reset_password_otp: Your reset password code
