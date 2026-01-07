@@ -273,6 +273,7 @@ gateway:
     - /api/v1/users/{userId}/basic-profile
     - /api/v1/users/friend-count
     - /api/v1/notifications/notify
+    - /api/v1/users/all-basic-profiles
   jwt:
     secret: ${JWT_SECRET}
     issuer: ${JWT_ISSUER}
