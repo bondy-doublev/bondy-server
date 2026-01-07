@@ -7,6 +7,8 @@ import { MailModule } from './modules/mail/mail.module';
 import { MomoModule } from './modules/payment/momo/momo.module';
 import { BondyVnpayModule } from './modules/payment/vnpay/vnpay.module';
 import { ConfigModule } from '@nestjs/config';
+import { FaqModule } from './modules/faq/faq.module';
+import { ChatBotModule } from './modules/chatbot/chatbot.module';
 
 @Module({
   imports: [
@@ -29,6 +31,8 @@ import { ConfigModule } from '@nestjs/config';
     MailModule,
     MomoModule,
     BondyVnpayModule,
+    FaqModule,
+    ChatBotModule,
   ],
   controllers: [AppController],
 })

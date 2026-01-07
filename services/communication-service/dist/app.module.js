@@ -16,6 +16,8 @@ const mail_module_1 = require("./modules/mail/mail.module");
 const momo_module_1 = require("./modules/payment/momo/momo.module");
 const vnpay_module_1 = require("./modules/payment/vnpay/vnpay.module");
 const config_1 = require("@nestjs/config");
+const faq_module_1 = require("./modules/faq/faq.module");
+const chatbot_module_1 = require("./modules/chatbot/chatbot.module");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -40,6 +42,8 @@ exports.AppModule = AppModule = __decorate([
             mail_module_1.MailModule,
             momo_module_1.MomoModule,
             vnpay_module_1.BondyVnpayModule,
+            faq_module_1.FaqModule,
+            chatbot_module_1.ChatBotModule,
         ],
         controllers: [app_controller_1.AppController],
     })
