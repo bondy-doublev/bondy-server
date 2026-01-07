@@ -341,6 +341,37 @@ public class AuthService implements IAuthService {
     return new AuthResponse();
   }
 
+  // ############
+  // ADMIN LOGIN
+  // ############
+  @Override
+  public AuthResponse adminLogin(LoginRequest request) {
+    String errorMessage = "Invalid credential";
+
+    User user = userRepo.findByEmail(request.getEmail())
+      .orElseThrow(() -> new AppException(ErrorCode.BAD_REQUEST, errorMessage));
+
+    if (!user.getActive() || !user.getRole().equals(Role.ADMIN.name()))
+      throw new AppException(ErrorCode.BAD_REQUEST, errorMessage);
+
+    Account localAccount = user.getAccounts().stream()
+      .filter(acc -> Provider.LOCAL.name().equals(acc.getProvider()))
+      .findFirst()
+      .orElseThrow(() -> new AppException(ErrorCode.BAD_REQUEST, errorMessage));
+
+    if (!passwordEncoder.matches(request.getPassword(), localAccount.getPasswordHash()))
+      throw new AppException(ErrorCode.BAD_REQUEST, errorMessage);
+
+    String sessionId = UUID.randomUUID().toString();
+    AuthResponse tokenResponse = buildAuthResponse(user, sessionId);
+
+    return AuthResponse.builder()
+      .accessToken(tokenResponse.getAccessToken())
+      .refreshToken(tokenResponse.getRefreshToken())
+      .user(UserResponse.fromEntity(user))
+      .build();
+  }
+
   private String generateDefaultPassword(String firstName) {
     return props.getEnvironment().equals("production")
       ? firstName + props.getUser().getDefaultPasswordSuffix()
