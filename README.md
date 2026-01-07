@@ -54,24 +54,24 @@ Bondy là một hệ thống backend **microservices** hiện đại cho nền t
 * **libs/**  
   Thư mục chứa các thư viện nội bộ mở rộng (nếu cần).
 
-## Cây thư mục (cập nhật)
+## Cây thư mục
 
 ```
 bondy-server/
-├─ config-server/                  # Spring Cloud Config
-├─ discovery-server/               # Eureka
-├─ gateway/                        # API Gateway
-├─ common-web/                     # Shared Java lib
+├─ config-server/
+├─ discovery-server/
+├─ gateway/
+├─ common-web/
 ├─ services/
-│  ├─ auth-service/                # User & Auth (Spring Boot)
-│  ├─ bondy-proxy/                 # Proxy (NestJS)
-│  ├─ bondy-recommendation-system/ # Recommendation (Python FastAPI)
-│  ├─ communication-service/       # Chat/Call/Chatbot (NestJS)
-│  ├─ interaction-service/         # Social interactions (Spring Boot)
-│  ├─ mail-service/                # Email (Spring Boot)
-│  ├─ moderation-service/          # Content moderation (Spring Boot)
-│  ├─ notification-service/        # Notifications (Spring Boot)
-│  └─ upload-service/              # File upload (Spring Boot)
+│  ├─ auth-service/
+│  ├─ bondy-proxy/
+│  ├─ bondy-recommendation-system/
+│  ├─ communication-service/
+│  ├─ interaction-service/
+│  ├─ mail-service/
+│  ├─ moderation-service/
+│  ├─ notification-service/
+│  └─ upload-service/
 ├─ .env.example
 ├─ .gitignore
 ├─ docker-compose.yml              # (Sắp triển khai)
@@ -82,78 +82,125 @@ bondy-server/
 ## Yêu cầu hệ thống
 
 - **JDK 21** (cho các service Spring Boot)
-- **Node.js 18+ & npm/yarn/pnpm** (cho NestJS services)
+- **Node.js 20+** & npm/yarn/pnpm (cho NestJS services)
 - **Python 3.11+** (cho recommendation-system)
-- **Maven Wrapper** (`./mvnw`) cho Java
-- **PostgreSQL/MySQL** (cho auth, interaction,...)
-- **Redis** (cache, real-time nếu cần)
-- **SMTP server** cho mail-service
-- **Docker & Docker Compose** (khuyến khích cho dev/prod)
+- **PostgreSQL 15** (khuyến nghị - phiên bản ổn định, hiệu suất cao, hỗ trợ tốt JSONB cho dữ liệu social)
+- **Redis 7+** (cache, pub/sub real-time)
+- **Maven Wrapper** (`./mvnw`)
+- **Docker & Docker Compose** (khuyến khích cho môi trường dev/prod)
 
-## Thiết lập & biến môi trường
+## Thiết lập biến môi trường (.env)
 
-1. Clone dự án và repo config `bondy-config` (nếu dùng Config Server).
+File `.env.example` đã được cung cấp ở root project. Copy thành `.env` và chỉnh sửa theo môi trường của bạn.
 
-2. Copy `.env.example` → `.env`, chỉnh sửa các biến:
-    - DB_URL, DB_USERNAME, DB_PASSWORD
-    - JWT_SECRET (phải đồng bộ giữa auth-service và gateway)
-    - SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS
-    - REDIS_HOST
-    - Các secret khác: OAuth client ID/secret, API keys,...
+### Nội dung mẫu `.env.example` (đã cập nhật)
 
+```dotenv
+# Môi trường chạy
+APP_ENV=local                  # local | dev | staging | production
+
+# Config & Discovery
+CONFIG_SERVER_URL=http://localhost:8888
+DISCOVERY_URL=http://localhost:8761/eureka
+
+# Gateway
+GATEWAY_URL=http://localhost:8080
+
+# Internal security
+API_KEY_HEADER=X-Internal-Api-Key
+INTERNAL_API_KEY=your-super-secret-internal-key
+
+# Port
+SERVER_PORT=8081
+ACTUATOR_PORT=9081
+
+# JWT
+JWT_ISSUER=bondy-app
+JWT_SECRET=your-very-strong-jwt-secret-key-min-256-bits
+
+# Database - PostgreSQL 15 (khuyến nghị)
+DB=postgresql
+DB_HOST=localhost
+DB_PORT=5432
+DB_NAME=bondy_db
+DB_USER=bondy_user
+DB_PASSWORD=your_strong_db_password
+
+# Mật khẩu mặc định
+DEFAULT_PASSWORD_SUFFIX=!Bondy2026@
+
+# Redis
+REDIS_HOST=localhost
+REDIS_PORT=6379
+REDIS_PASSWORD=
+
+# SMTP - Mail service
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=your-email@gmail.com
+SMTP_PASS=your-app-password
+SMTP_FROM=no-reply@bondy.app
+
+# OAuth2 providers
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=
+DISCORD_CLIENT_ID=
+DISCORD_CLIENT_SECRET=
+
+# Upload service (S3)
+AWS_S3_BUCKET=bondy-media
+AWS_ACCESS_KEY_ID=
+AWS_SECRET_ACCESS_KEY=
+AWS_REGION=ap-southeast-1
+
+# Recommendation system
+RECOMMEND_SERVICE_URL=http://localhost:8000
+```
+
+### Hướng dẫn cấu hình PostgreSQL 15
+
+1. Cài đặt PostgreSQL 15.
+2. Tạo user và database:
+   ```sql
+   CREATE USER bondy_user WITH PASSWORD 'your_strong_db_password';
+   CREATE DATABASE bondy_db OWNER bondy_user ENCODING 'UTF8' LC_COLLATE 'en_US.UTF-8' LC_CTYPE 'en_US.UTF-8' TEMPLATE template0;
+   GRANT ALL PRIVILEGES ON DATABASE bondy_db TO bondy_user;
+   ```
+
+## Thiết lập & chạy dự án
+
+1. Clone dự án + repo `bondy-config` (nếu dùng Config Server).
+2. Copy `.env.example` → `.env` và cập nhật các giá trị.
 3. Cài dependencies:
    ```bash
-   # Java modules
+   # Java
    ./mvnw clean install -DskipTests
 
-   # NestJS services (communication & proxy)
+   # NestJS (trong từng thư mục service)
    cd services/communication-service && npm install
    cd services/bondy-proxy && npm install
 
-   # Python recommendation
+   # Python
    cd services/bondy-recommendation-system
    pip install -r requirements.txt
    ```
-
-## Chạy hệ thống
-
-Thứ tự khởi động quan trọng:
-
-1. **config-server**
-2. **discovery-server**
-3. Các service khác (có thể song song):
-    - Spring Boot: `./mvnw spring-boot:run` trong từng module hoặc dùng IDE.
-    - NestJS: `npm run start:dev` (hoặc `nest start`)
-    - Python recommend: `uvicorn main:app --reload --port <port>`
-
-4. Cuối cùng: **gateway**
+4. Khởi động theo thứ tự: config-server → discovery-server → các service → gateway.
 
 Truy cập:
-- Eureka dashboard: http://localhost:8761
-- API Gateway: http://localhost:8080 (hoặc port đã config)
+- Eureka: http://localhost:8761
+- Gateway: http://localhost:8080
 
-## Luồng hoạt động cơ bản
+## Troubleshooting
 
-1. Client → **gateway** (xác thực JWT).
-2. Gateway route đến service phù hợp qua Eureka discovery.
-3. Auth-service xử lý login → trả JWT.
-4. Interaction/upload/notification... xử lý nghiệp vụ social.
-5. Communication (NestJS) xử lý real-time chat/call.
-6. Recommendation (Python) cung cấp gợi ý cá nhân hóa.
-
-## Troubleshooting thường gặp
-
-- Service không đăng ký trên Eureka → kiểm tra `application.yml` có `eureka.client.service-url`.
-- JWT invalid → đảm bảo `JWT_SECRET` giống nhau.
-- Mail lỗi TLS → bật `mail.smtp.starttls.enable=true`.
-- Port conflict → chỉnh trong `.env` hoặc `application.yml`.
+- Service không đăng ký Eureka → kiểm tra `eureka.client.service-url` trong config.
+- JWT invalid → đảm bảo `JWT_SECRET` giống nhau ở auth và gateway.
+- DB connection refused → kiểm tra PostgreSQL đang chạy và thông tin trong `.env`.
 
 ## Định hướng mở rộng
 
-- Hoàn thiện **docker-compose.yml** để chạy toàn bộ stack một lệnh.
-- Thêm **user-service**, **post-service**, **ads-service**,...
-- Tích hợp **Keycloak** cho auth nâng cao hoặc **Hashicorp Vault** cho secret.
-- CI/CD với GitHub Actions.
-- Monitoring: Prometheus + Grafana, ELK stack.
+- Hoàn thiện Docker Compose.
+- Thêm user-service, post-service, ads-service...
+- Tích hợp Keycloak/Vault.
+- Monitoring với Prometheus + Grafana.
 
 Chào mừng góp code! 🚀
