@@ -1,110 +1,159 @@
-# Bondy Server — Monorepo Microservices (Spring Boot)
+# Bondy Server — Monorepo Microservices Architecture
 
-## Kiến trúc & thành phần
+Bondy là một hệ thống backend **microservices** hiện đại cho nền tảng mạng xã hội, kết hợp nhiều công nghệ để tối ưu hiệu suất và khả năng mở rộng.
 
-* **config-server**
-  Quản lý cấu hình tập trung (Spring Cloud Config), lấy từ repo `bondy-config`.
+### Công nghệ chính theo service
 
-* **discovery-server**
-  Eureka Server để tất cả service đăng ký/tra cứu lẫn nhau.
+- **Java Spring Boot** (phần lớn services): auth, interaction, notification, upload, mail, moderation, ...
+- **NestJS** (TypeScript/Node.js): communication-service, bondy-proxy
+- **Python** (FastAPI + Uvicorn): recommendation-system
 
-* **gateway**
-  Spring Cloud Gateway, làm entrypoint duy nhất: định tuyến request, xác thực JWT, CORS, lọc header.
+## Thành phần hệ thống
+
+* **config-server** (Spring Boot)  
+  Quản lý cấu hình tập trung (Spring Cloud Config), lấy từ repo riêng `bondy-config`.
+
+* **discovery-server** (Spring Boot)  
+  Eureka Server để các service đăng ký và khám phá lẫn nhau.
+
+* **gateway** (Spring Boot)  
+  Spring Cloud Gateway – entrypoint duy nhất: định tuyến request, xác thực JWT, CORS, rate limiting, lọc header.
 
 * **services/**
 
-    * **auth-service**
-      Xử lý xác thực/ủy quyền: đăng ký, đăng nhập, phát hành & refresh JWT, hỗ trợ OAuth2 (Google/Discord).
-    * **mail-service**
-      Gửi email (OTP, template), kết nối SMTP với TLS.
+    * **auth-service** (Spring Boot)  
+      Quản lý tài khoản người dùng, API key, đăng ký/đăng nhập, phát hành & refresh JWT, hỗ trợ OAuth2 (Google, Discord,...).
 
-* **common-web**
-  Module thư viện chung: DTO, exception, JWT util, filter, constants. Được import vào các service để tránh code lặp lại.
+    * **bondy-proxy** (NestJS)  
+      Proxy server xử lý các request proxy (reverse proxy, caching, load balancing tùy nhu cầu).
 
-* **libs/**
-  Thư mục để mở rộng/thêm library nội bộ.
+    * **bondy-recommendation-system** (Python FastAPI + Uvicorn)  
+      Hệ thống gợi ý bài viết, reel, nội dung dựa trên machine learning/user behavior.
 
----
+    * **communication-service** (NestJS)  
+      Quản lý chat thời gian thực, voice/video call, quảng cáo trong call/chat, tích hợp chatbot.
 
-## Cây thư mục
+    * **interaction-service** (Spring Boot)  
+      Quản lý tương tác mạng xã hội: like, comment, share, view post/reel/story, follow/unfollow,...
+
+    * **mail-service** (Spring Boot)  
+      Gửi email (OTP, thông báo, newsletter), hỗ trợ template và SMTP với TLS.
+
+    * **moderation-service** (Spring Boot)  
+      Kiểm duyệt nội dung: phát hiện spam, toxic content, báo cáo vi phạm (bug/report), tự động/mod manual.
+
+    * **notification-service** (Spring Boot)  
+      Gửi thông báo push/real-time (WebSocket, Firebase Cloud Messaging,...).
+
+    * **upload-service** (Spring Boot)  
+      Xử lý upload file/media (image, video, reel), lưu trữ (local/S3), resize/thumbnail, virus scan.
+
+* **common-web** (Java)  
+  Module thư viện chung cho các service Spring Boot: DTO, exception handler, JWT util, filter, constants.
+
+* **libs/**  
+  Thư mục chứa các thư viện nội bộ mở rộng (nếu cần).
+
+## Cây thư mục (cập nhật)
 
 ```
 bondy-server/
-├─ config-server/         # Spring Cloud Config Server
-├─ discovery-server/      # Eureka Discovery
-├─ gateway/               # API Gateway
-├─ common-web/            # Shared library
+├─ config-server/                  # Spring Cloud Config
+├─ discovery-server/               # Eureka
+├─ gateway/                        # API Gateway
+├─ common-web/                     # Shared Java lib
 ├─ services/
-│  ├─ auth-service/       # Auth & JWT
-│  └─ mail-service/       # Mail/OTP
-├─ .env.example           # Biến môi trường mẫu
-├─ pom.xml                # Parent pom (aggregator)
+│  ├─ auth-service/                # User & Auth (Spring Boot)
+│  ├─ bondy-proxy/                 # Proxy (NestJS)
+│  ├─ bondy-recommendation-system/ # Recommendation (Python FastAPI)
+│  ├─ communication-service/       # Chat/Call/Chatbot (NestJS)
+│  ├─ interaction-service/         # Social interactions (Spring Boot)
+│  ├─ mail-service/                # Email (Spring Boot)
+│  ├─ moderation-service/          # Content moderation (Spring Boot)
+│  ├─ notification-service/        # Notifications (Spring Boot)
+│  └─ upload-service/              # File upload (Spring Boot)
+├─ .env.example
+├─ .gitignore
+├─ docker-compose.yml              # (Sắp triển khai)
+├─ pom.xml                         # Parent Maven (cho Java modules)
 └─ README.md
 ```
 
----
-
 ## Yêu cầu hệ thống
 
-* **JDK 21**
-* **Maven Wrapper** (có sẵn `./mvnw`)
-* **PostgreSQL/MySQL** cho `auth-service`
-* **SMTP server** (ví dụ Gmail SMTP) cho `mail-service`
+- **JDK 21** (cho các service Spring Boot)
+- **Node.js 18+ & npm/yarn/pnpm** (cho NestJS services)
+- **Python 3.11+** (cho recommendation-system)
+- **Maven Wrapper** (`./mvnw`) cho Java
+- **PostgreSQL/MySQL** (cho auth, interaction,...)
+- **Redis** (cache, real-time nếu cần)
+- **SMTP server** cho mail-service
+- **Docker & Docker Compose** (khuyến khích cho dev/prod)
 
----
+## Thiết lập & biến môi trường
 
-## Thiết lập nhanh
+1. Clone dự án và repo config `bondy-config` (nếu dùng Config Server).
 
-1. Clone dự án `bondy-server` và repo config riêng `bondy-config`.
+2. Copy `.env.example` → `.env`, chỉnh sửa các biến:
+    - DB_URL, DB_USERNAME, DB_PASSWORD
+    - JWT_SECRET (phải đồng bộ giữa auth-service và gateway)
+    - SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS
+    - REDIS_HOST
+    - Các secret khác: OAuth client ID/secret, API keys,...
 
-2. Copy `.env.example` thành `.env`, cập nhật giá trị (DB, SMTP, JWT\_SECRET, …).
-
-3. Build toàn bộ dự án:
-
+3. Cài dependencies:
    ```bash
+   # Java modules
    ./mvnw clean install -DskipTests
+
+   # NestJS services (communication & proxy)
+   cd services/communication-service && npm install
+   cd services/bondy-proxy && npm install
+
+   # Python recommendation
+   cd services/bondy-recommendation-system
+   pip install -r requirements.txt
    ```
 
-4. Chạy theo thứ tự:
+## Chạy hệ thống
 
-    * `config-server`
-    * `discovery-server`
-    * `auth-service` + `mail-service`
-    * `gateway`
+Thứ tự khởi động quan trọng:
 
-5. Truy cập:
+1. **config-server**
+2. **discovery-server**
+3. Các service khác (có thể song song):
+    - Spring Boot: `./mvnw spring-boot:run` trong từng module hoặc dùng IDE.
+    - NestJS: `npm run start:dev` (hoặc `nest start`)
+    - Python recommend: `uvicorn main:app --reload --port <port>`
 
-    * Eureka dashboard: [http://localhost:8761](http://localhost:8761)
-    * Gateway entrypoint: [http://localhost:8080](http://localhost:8080)
+4. Cuối cùng: **gateway**
 
----
+Truy cập:
+- Eureka dashboard: http://localhost:8761
+- API Gateway: http://localhost:8080 (hoặc port đã config)
 
-## Luồng hoạt động
+## Luồng hoạt động cơ bản
 
-1. **Client** gửi request → **Gateway**.
-2. **Gateway** kiểm tra JWT:
+1. Client → **gateway** (xác thực JWT).
+2. Gateway route đến service phù hợp qua Eureka discovery.
+3. Auth-service xử lý login → trả JWT.
+4. Interaction/upload/notification... xử lý nghiệp vụ social.
+5. Communication (NestJS) xử lý real-time chat/call.
+6. Recommendation (Python) cung cấp gợi ý cá nhân hóa.
 
-    * Nếu hợp lệ → forward đến service tương ứng.
-    * Nếu không hợp lệ → trả 401.
-3. **Auth-service** phát hành JWT & refresh token.
-4. **Mail-service** gửi OTP qua email (ví dụ khi đăng ký).
-5. **Common-web** cung cấp DTO/logic chung cho các service.
+## Troubleshooting thường gặp
 
----
-
-## Troubleshooting
-
-* **Không push được code** → cần `git pull` trước rồi mới push.
-* **Mail lỗi STARTTLS** → bật `mail.smtp.starttls.enable=true`.
-* **JWT invalid** → kiểm tra `JWT_SECRET` đồng bộ ở `gateway` và `auth-service`.
-
----
+- Service không đăng ký trên Eureka → kiểm tra `application.yml` có `eureka.client.service-url`.
+- JWT invalid → đảm bảo `JWT_SECRET` giống nhau.
+- Mail lỗi TLS → bật `mail.smtp.starttls.enable=true`.
+- Port conflict → chỉnh trong `.env` hoặc `application.yml`.
 
 ## Định hướng mở rộng
 
-* Thêm service: `user-service`, …
-* Triển khai **Docker Compose** để chạy toàn bộ stack.
-* Tích hợp **Keycloak** hoặc **Vault** cho quản lý secret nâng cao.
-* CI/CD pipeline (GitHub Actions/GitLab CI).
+- Hoàn thiện **docker-compose.yml** để chạy toàn bộ stack một lệnh.
+- Thêm **user-service**, **post-service**, **ads-service**,...
+- Tích hợp **Keycloak** cho auth nâng cao hoặc **Hashicorp Vault** cho secret.
+- CI/CD với GitHub Actions.
+- Monitoring: Prometheus + Grafana, ELK stack.
 
----
+Chào mừng góp code! 🚀
