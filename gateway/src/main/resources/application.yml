@@ -288,11 +288,6 @@ gateway:
       - /api/v1/auth/forgot-password
       - /api/v1/auth/reset-password
       - /api/v1/auth/reset-password-otp
-      # Test nên cho public nữa nhớ sửa ...
-      - /api/v1/auth/api-key/**
-      - /api/v1/users/all-basic-profiles
-      - /api/v1/friendships/suggest/**
-      - /api/v1/admin/reports/**
       - /files/**
       # Should public
       - /actuator/**
