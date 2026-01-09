@@ -80,6 +80,6 @@ app:
     tag-limit: 10
     content-limit: 1000
   notify:
-    max-batch: 200
-    poll-delay: 2000
-    max-loop: 100
+    max-batch: 50
+    poll-delay: 5000
+    max-loop: 20

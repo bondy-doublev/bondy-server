@@ -13,7 +13,16 @@
     <file url="file://$PROJECT_DIR$/mail-service/src/main/java" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/services/auth-service/src/main/java" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/services/auth-service/src/main/resources" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/services/interaction-service/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/services/interaction-service/src/main/resources" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/services/mail-service/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/services/mail-service/src/main/resources" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/services/moderation-service/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/services/moderation-service/src/main/resources" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/services/notification-service/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/services/notification-service/src/main/resources" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/services/upload-service/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/services/upload-service/src/main/resources" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/src/main/java" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/src/main/resources" charset="UTF-8" />
   </component>

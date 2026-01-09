@@ -267,16 +267,27 @@ public class NotificationNotifyJob {
 
   private <T> void processBatch(String name, Supplier<List<T>> fetch, Consumer<T> handler) {
     int loops = maxLoops();
+    int totalProcessed = 0;
+    long startTime = System.currentTimeMillis();
+
     while (loops-- > 0) {
       List<T> batch = fetch.get();
       if (batch.isEmpty()) break;
+
       for (T item : batch) {
         try {
           handler.accept(item);
+          totalProcessed++;
         } catch (Exception e) {
           log.error("❌ Error processing {} item: {}", name, item, e);
         }
       }
+    }
+
+    long duration = System.currentTimeMillis() - startTime;
+    if (totalProcessed > 0) {
+      log.info("✅ {} job completed: processed {} items in {}ms",
+              name, totalProcessed, duration);
     }
   }
 }
