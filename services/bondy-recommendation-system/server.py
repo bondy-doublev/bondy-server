@@ -1,10 +1,9 @@
-# server.py (fixed - robust vector parsing + consistent DB writes)
+# server.py (fixed - robust vector parsing + consistent DB writes + friend-based scoring)
 import os
 import ast
 import threading
 import time
 from collections import defaultdict
-
 from dotenv import load_dotenv
 from fastapi import FastAPI, Query
 from pydantic import BaseModel
@@ -15,8 +14,7 @@ from psycopg2.extras import RealDictCursor
 from cachetools import TTLCache
 
 load_dotenv()
-
-app = FastAPI(title="Bondy Recommendation Service (fixed vectors)")
+app = FastAPI(title="Bondy Recommendation Service (fixed vectors + friends)")
 
 # ---------------------------
 # CONFIG
@@ -28,18 +26,17 @@ DB_CONFIG = {
     "user": os.getenv("DB_USER", "postgres"),
     "password": os.getenv("DB_PASS", ""),
 }
-
 TOP_N = int(os.getenv("TOP_N", 20))
 REFIT_INTERVAL_SECONDS = int(os.getenv("REFIT_INTERVAL_SECONDS", 600))
 TARGET_DIM = int(os.getenv("TARGET_DIM", 500))
-
 # Weights
 REACT_WEIGHT = float(os.getenv("REACT_WEIGHT", 1.0))
 COMMENT_WEIGHT = float(os.getenv("COMMENT_WEIGHT", 1.2))
 SHARE_WEIGHT = float(os.getenv("SHARE_WEIGHT", 1.5))
 READ_WEIGHT = float(os.getenv("READ_WEIGHT", 0.5))
-
 ALPHA = float(os.getenv("ALPHA", 0.8))
+# Friend influence
+FRIEND_WEIGHT = float(os.getenv("FRIEND_WEIGHT", 0.5))  # how strongly friends influence your profile
 
 # cache
 recommend_cache = TTLCache(maxsize=10000, ttl=300)
@@ -47,19 +44,16 @@ recommend_cache = TTLCache(maxsize=10000, ttl=300)
 # TF-IDF
 vectorizer = TfidfVectorizer(max_features=min(500, TARGET_DIM), stop_words="english")
 
-
 # ---------------------------
 # DB helpers
 # ---------------------------
 def get_conn():
     return psycopg2.connect(cursor_factory=RealDictCursor, **DB_CONFIG)
 
-
 def _vec_to_literal(vec_iterable):
     """Convert iterable of numbers -> pgvector literal string like '[0.1,0.2,...]'"""
     # use high precision string formatting but avoid scientific notation
     return "[" + ",".join(f"{float(x):.17g}" for x in vec_iterable) + "]"
-
 
 def parse_db_vector(value):
     """
@@ -112,7 +106,6 @@ def parse_db_vector(value):
     except Exception:
         return None
 
-
 def pad_to_target(arr2d, target=TARGET_DIM):
     """Pad 2D numpy array (n x d) to width target by zeros (or truncate)."""
     n, d = arr2d.shape
@@ -122,7 +115,6 @@ def pad_to_target(arr2d, target=TARGET_DIM):
         return arr2d[:, :target]
     pad = np.zeros((n, target - d), dtype=float)
     return np.hstack((arr2d, pad))
-
 
 # ---------------------------
 # Refit / rebuild vectors & profiles
@@ -150,16 +142,13 @@ def load_posts_content():
         cur.close()
         conn.close()
 
-
 def refit_vectors():
     global vectorizer
     print("[INFO] Starting full refit...")
-
     post_ids, contents = load_posts_content()
     if not post_ids:
         print("[INFO] No posts found for refit")
         return
-
     # fit TF-IDF
     try:
         X_sparse = vectorizer.fit_transform(contents)
@@ -167,9 +156,7 @@ def refit_vectors():
     except Exception as e:
         print(f"[ERROR] TF-IDF fit_transform failed: {e}")
         return
-
     X = pad_to_target(np.array(X, dtype=float), TARGET_DIM)
-
     conn = get_conn()
     cur = conn.cursor()
     try:
@@ -190,7 +177,6 @@ def refit_vectors():
                 (int(pid), vec_lit),
             )
             inserted += 1
-
         # Build weighted interactions list
         cur.execute(
             f"""
@@ -207,8 +193,7 @@ def refit_vectors():
             WHERE post_id IS NOT NULL
             """
         )
-        inter_rows = cur.fetchall()  # list of dicts
-
+        inter_rows = cur.fetchall() # list of dicts
         # Load post_vectors from DB and parse
         cur.execute("SELECT post_id, content_vector FROM post_vectors")
         pv_rows = cur.fetchall()
@@ -218,10 +203,8 @@ def refit_vectors():
             vec = parse_db_vector(r["content_vector"])
             if vec is not None and vec.size == TARGET_DIM:
                 pv_map[pid] = vec
-
         user_sum = defaultdict(lambda: np.zeros(TARGET_DIM, dtype=float))
         user_w = defaultdict(float)
-
         for r in inter_rows:
             uid = int(r["user_id"])
             pid = int(r["post_id"])
@@ -231,7 +214,6 @@ def refit_vectors():
                 continue
             user_sum[uid] += w * vec
             user_w[uid] += w
-
         profile_count = 0
         # Also create zero-profiles for active users with no weights (optional)
         cur.execute(
@@ -248,7 +230,6 @@ def refit_vectors():
             """
         )
         active_users = [int(r["user_id"]) for r in cur.fetchall()]
-
         for uid in active_users:
             total_w = user_w.get(uid, 0.0)
             if total_w > 0:
@@ -266,7 +247,6 @@ def refit_vectors():
                 (uid, vec_lit),
             )
             profile_count += 1
-
         conn.commit()
         print(f"[INFO] Refit completed: {inserted}/{len(post_ids)} post_vectors, {profile_count} user_profiles")
     except Exception as e:
@@ -275,9 +255,7 @@ def refit_vectors():
     finally:
         cur.close()
         conn.close()
-
     recommend_cache.clear()
-
 
 # ---------------------------
 # incremental helpers
@@ -294,7 +272,6 @@ def incremental_add_post_vector(post_id: int, content_text: str):
     except Exception as e:
         print(f"[ERROR] incremental vectorize failed: {e}")
         return
-
     conn = get_conn()
     cur = conn.cursor()
     try:
@@ -316,7 +293,6 @@ def incremental_add_post_vector(post_id: int, content_text: str):
         cur.close()
         conn.close()
 
-
 def incremental_update_profile_with_weight(user_id: int, post_id: int, weight: float):
     conn = get_conn()
     cur = conn.cursor()
@@ -327,7 +303,6 @@ def incremental_update_profile_with_weight(user_id: int, post_id: int, weight: f
         post_vec = parse_db_vector(prow["content_vector"]) if prow else None
         if post_vec is None:
             return
-
         # get user profile
         cur.execute("SELECT profile_vector FROM user_profiles WHERE user_id = %s", (int(user_id),))
         urow = cur.fetchone()
@@ -346,7 +321,6 @@ def incremental_update_profile_with_weight(user_id: int, post_id: int, weight: f
                     new_profile = old.tolist()
                 else:
                     new_profile = (numerator / denom).tolist()
-
         vec_lit = _vec_to_literal(new_profile)
         cur.execute(
             """
@@ -364,7 +338,6 @@ def incremental_update_profile_with_weight(user_id: int, post_id: int, weight: f
     finally:
         cur.close()
         conn.close()
-
 
 def insert_read_mark(user_id: int, post_id: int):
     conn = get_conn()
@@ -386,6 +359,38 @@ def insert_read_mark(user_id: int, post_id: int):
         cur.close()
         conn.close()
 
+# ---------------------------
+# helper: friends' profile aggregation
+# ---------------------------
+def _get_friends_avg_vector(cur, user_id: int):
+    """
+    Return the average profile vector of ACCEPTED friends (both directions).
+    Returns numpy array (TARGET_DIM,) or None if no valid friend vectors.
+    """
+    cur.execute(
+        """
+        SELECT up.profile_vector FROM user_profiles up
+        WHERE up.user_id IN (
+            SELECT friend_id FROM friendships WHERE user_id = %s AND status = 'ACCEPTED'
+            UNION
+            SELECT user_id FROM friendships WHERE friend_id = %s AND status = 'ACCEPTED'
+        )
+        """,
+        (int(user_id), int(user_id)),
+    )
+    rows = cur.fetchall()
+    vecs = []
+    for r in rows:
+        v = parse_db_vector(r.get("profile_vector"))
+        if v is not None and v.size == TARGET_DIM:
+            vecs.append(v)
+    if not vecs:
+        return None
+    try:
+        stacked = np.stack(vecs, axis=0)
+        return np.mean(stacked, axis=0)
+    except Exception:
+        return None
 
 # ---------------------------
 # background refit thread
@@ -398,9 +403,7 @@ def periodic_refit():
         except Exception as e:
             print(f"[ERROR] periodic_refit: {e}")
 
-
 threading.Thread(target=periodic_refit, daemon=True).start()
-
 
 # ---------------------------
 # API models & routes
@@ -409,18 +412,15 @@ class InteractionRequest(BaseModel):
     user_id: int
     post_id: int
 
-
 class NewPostRequest(BaseModel):
     post_id: int
     content_text: str
-
 
 @app.get("/recommend")
 def recommend(user_id: int, offset: int = Query(0, ge=0), limit: int = Query(TOP_N, ge=1)):
     cache_key = (user_id, offset, limit)
     if cache_key in recommend_cache:
         return recommend_cache[cache_key]
-
     conn = get_conn()
     cur = conn.cursor()
     try:
@@ -430,14 +430,32 @@ def recommend(user_id: int, offset: int = Query(0, ge=0), limit: int = Query(TOP
         if urow and urow.get("profile_vector") is not None:
             user_vec = parse_db_vector(urow["profile_vector"])
 
-        # if no profile or profile is all zeros -> chronological cold-start (exclude reacted/read)
+        # get friends' aggregated profile (if any)
+        friend_vec = _get_friends_avg_vector(cur, int(user_id))
+
+        # combine user_vec and friend_vec according to FRIEND_WEIGHT
+        combined_vec = None
+        if user_vec is None and friend_vec is None:
+            combined_vec = None
+        elif user_vec is None and friend_vec is not None:
+            combined_vec = friend_vec
+        elif user_vec is not None and friend_vec is None:
+            combined_vec = user_vec
+        else:
+            # both exist -> weighted average (normalize by total weight)
+            combined_vec = (user_vec + FRIEND_WEIGHT * friend_vec) / (1.0 + FRIEND_WEIGHT)
+
+        # determine cold-start based on combined vector (so friends can help cold-start)
         is_zero_profile = True
-        if user_vec is not None:
+        if combined_vec is not None:
             try:
-                is_zero_profile = np.allclose(user_vec.astype(float), 0.0)
+                is_zero_profile = np.allclose(combined_vec.astype(float), 0.0)
             except Exception:
                 # fallback: treat as non-zero only if parse succeeded
                 is_zero_profile = False
+
+        # if we have a combined_vec and it's not zero, use it for scoring
+        user_vec = combined_vec
 
         # count unread
         cur.execute(
@@ -452,11 +470,9 @@ def recommend(user_id: int, offset: int = Query(0, ge=0), limit: int = Query(TOP
             (int(user_id), int(user_id)),
         )
         num_unread = int(cur.fetchone()["cnt"] or 0)
-
         remaining = limit
         cur_offset = offset
         results = []
-
         # build base select fragments
         if is_zero_profile:
             # score is 0 in cold-start mode
@@ -472,14 +488,12 @@ def recommend(user_id: int, offset: int = Query(0, ge=0), limit: int = Query(TOP
                        COALESCE(p.content_text, '') || COALESCE(' ' || sp.content_text, '') AS content_text,
                        (1 - (pv.content_vector <=> %s::vector)) AS score
             """
-
         from_part = """
             FROM post_vectors pv
             JOIN posts p ON pv.post_id = p.id
             LEFT JOIN posts sp ON p.shared_from_post_id = sp.id
             WHERE p.visibility = TRUE
         """
-
         # unread block
         if cur_offset < num_unread:
             take = min(remaining, num_unread - cur_offset)
@@ -492,7 +506,7 @@ def recommend(user_id: int, offset: int = Query(0, ge=0), limit: int = Query(TOP
                 cur.execute(unread_query, (int(user_id), int(user_id), cur_offset, take))
             else:
                 unread_query += " ORDER BY pv.content_vector <=> %s::vector OFFSET %s LIMIT %s"
-                cur.execute(unread_query, (int(user_user := 0),))  # dummy to satisfy param order below (we'll re-run properly)
+                cur.execute(unread_query, (int(user_user := 0),)) # dummy to satisfy param order below (we'll re-run properly)
                 # actually execute with correct params:
                 cur.execute(unread_query, (user_vec_lit, int(user_id), int(user_id), user_vec_lit, cur_offset, take))
             rows = cur.fetchall()
@@ -501,7 +515,6 @@ def recommend(user_id: int, offset: int = Query(0, ge=0), limit: int = Query(TOP
             cur_offset = 0
         else:
             cur_offset -= num_unread
-
         # read block
         if remaining > 0:
             read_query = base_select + from_part + """
@@ -516,7 +529,6 @@ def recommend(user_id: int, offset: int = Query(0, ge=0), limit: int = Query(TOP
                 cur.execute(read_query, (user_vec_lit, int(user_id), int(user_id), user_vec_lit, cur_offset, remaining))
             rows = cur.fetchall()
             results.extend([{"id": r["id"], "content_text": r["content_text"], "score": float(r["score"])} for r in rows])
-
         recommend_cache[cache_key] = results
         return results
     except Exception as e:
@@ -527,12 +539,10 @@ def recommend(user_id: int, offset: int = Query(0, ge=0), limit: int = Query(TOP
         cur.close()
         conn.close()
 
-
 def clear_user_cache(user_id: int):
     keys = [k for k in list(recommend_cache.keys()) if k[0] == user_id]
     for k in keys:
         del recommend_cache[k]
-
 
 @app.post("/react")
 def user_reacts(req: InteractionRequest):
@@ -540,20 +550,17 @@ def user_reacts(req: InteractionRequest):
     clear_user_cache(req.user_id)
     return {"status": "ok"}
 
-
 @app.post("/comment")
 def user_comments(req: InteractionRequest):
     incremental_update_profile_with_weight(req.user_id, req.post_id, COMMENT_WEIGHT)
     clear_user_cache(req.user_id)
     return {"status": "ok"}
 
-
 @app.post("/share")
 def user_shares(req: InteractionRequest):
     incremental_update_profile_with_weight(req.user_id, req.post_id, SHARE_WEIGHT)
     clear_user_cache(req.user_id)
     return {"status": "ok"}
-
 
 @app.post("/read")
 def user_reads(req: InteractionRequest):
@@ -562,13 +569,11 @@ def user_reads(req: InteractionRequest):
     clear_user_cache(req.user_id)
     return {"status": "ok"}
 
-
 @app.post("/new_post")
 def add_post(req: NewPostRequest):
     incremental_add_post_vector(req.post_id, req.content_text)
     recommend_cache.clear()
     return {"status": "ok"}
-
 
 @app.get("/health")
 def health():
@@ -578,7 +583,6 @@ def health():
         return {"status": "ok", "db": "connected"}
     except Exception as e:
         return {"status": "error", "detail": str(e)}
-
 
 # ---------------------------
 # INIT
