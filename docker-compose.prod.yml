@@ -10,8 +10,8 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       TZ: Asia/Ho_Chi_Minh
       PGTZ: Asia/Ho_Chi_Minh
-    ports:
-      - "${POSTGRES_HOST_PORT}:5432"
+#    ports:
+#      - "${POSTGRES_HOST_PORT}:5432"
     volumes:
       - pg_data:/var/lib/postgresql/data
       - ./init.sql:/docker-entrypoint-initdb.d/init.sql
@@ -29,8 +29,8 @@ services:
     container_name: discovery-server
     env_file:
       - ./discovery-server/.env.discovery
-    ports:
-      - "${DISCOVERY_SERVER_HOST_PORT}:8761"
+#    ports:
+#      - "${DISCOVERY_SERVER_HOST_PORT}:8761"
     volumes:
       - /etc/localtime:/etc/localtime:ro
       - /etc/timezone:/etc/timezone:ro
@@ -46,9 +46,9 @@ services:
     container_name: auth-service
     env_file:
       - ./services/auth-service/.env.auth.docker
-    ports:
-      - "${AUTH_HOST_PORT}:8080"
-      - "${AUTH_ACTUATOR_HOST_PORT}:9081"
+#    ports:
+#      - "${AUTH_HOST_PORT}:8080"
+#      - "${AUTH_ACTUATOR_HOST_PORT}:9081"
     depends_on:
       postgres:
         condition: service_healthy
@@ -92,9 +92,9 @@ services:
     container_name: interaction-service
     env_file:
       - ./services/interaction-service/.env.interaction.docker
-    ports:
-      - "${INTERACTION_HOST_PORT}:8080"
-      - "${INTERACTION_ACTUATOR_HOST_PORT}:9085"
+#    ports:
+#      - "${INTERACTION_HOST_PORT}:8080"
+#      - "${INTERACTION_ACTUATOR_HOST_PORT}:9085"
     depends_on:
       postgres:
         condition: service_healthy
@@ -115,9 +115,9 @@ services:
     container_name: mail-service
     env_file:
       - ./services/mail-service/.env.mail.docker
-    ports:
-      - "${MAIL_HOST_PORT}:8080"
-      - "${MAIL_ACTUATOR_HOST_PORT}:9082"
+#    ports:
+#      - "${MAIL_HOST_PORT}:8080"
+#      - "${MAIL_ACTUATOR_HOST_PORT}:9082"
     depends_on:
       postgres:
         condition: service_healthy
@@ -138,9 +138,9 @@ services:
     container_name: moderation-service
     env_file:
       - ./services/moderation-service/.env.moderation.docker
-    ports:
-      - "${MODERATION_HOST_PORT}:8080"
-      - "${MODERATION_ACTUATOR_HOST_PORT}:9088"
+#    ports:
+#      - "${MODERATION_HOST_PORT}:8080"
+#      - "${MODERATION_ACTUATOR_HOST_PORT}:9088"
     depends_on:
       postgres:
         condition: service_healthy
@@ -161,9 +161,9 @@ services:
     container_name: notification-service
     env_file:
       - ./services/notification-service/.env.notification.docker
-    ports:
-      - "${NOTIFICATION_HOST_PORT}:8080"
-      - "${NOTIFICATION_ACTUATOR_HOST_PORT}:9087"
+#    ports:
+#      - "${NOTIFICATION_HOST_PORT}:8080"
+#      - "${NOTIFICATION_ACTUATOR_HOST_PORT}:9087"
     depends_on:
       postgres:
         condition: service_healthy
@@ -184,9 +184,9 @@ services:
     container_name: upload-service
     env_file:
       - ./services/upload-service/.env.upload.docker
-    ports:
-      - "${UPLOAD_HOST_PORT}:8080"
-      - "${UPLOAD_ACTUATOR_HOST_PORT}:9083"
+#    ports:
+#      - "${UPLOAD_HOST_PORT}:8080"
+#      - "${UPLOAD_ACTUATOR_HOST_PORT}:9083"
     volumes:
       - ./uploads:/app/uploads
       - /etc/localtime:/etc/localtime:ro

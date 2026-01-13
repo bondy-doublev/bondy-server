@@ -30,9 +30,17 @@ public interface PostRepository extends JpaRepository<Post, Long> {
   @Query("UPDATE Post p SET p.shareCount = p.shareCount + :delta WHERE p.id = :postId")
   void updateShareCount(@Param("postId") Long postId, @Param("delta") int delta);
 
-  // NEW: feed public (home)
-  @Query("SELECT p FROM Post p WHERE p.visibility = TRUE ORDER BY p.createdAt DESC")
-  Page<Post> findPublicFeed(Pageable pageable);
+  @Query("""
+  SELECT p
+  FROM Post p
+  LEFT JOIN p.postReadUsers r WITH r.userId = :userId
+  WHERE p.visibility = true
+  GROUP BY p
+  ORDER BY 
+    CASE WHEN MIN(r.id) IS NULL THEN 0 ELSE 1 END,
+    p.createdAt DESC
+  """)
+  Page<Post> findPublicFeed(@Param("userId") Long userId, Pageable pageable);
 
   // NEW: wall feed của 1 user, có xét owner/visibility
   @Query("""
