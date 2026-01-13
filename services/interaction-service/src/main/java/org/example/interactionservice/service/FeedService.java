@@ -1,5 +1,7 @@
 package org.example.interactionservice.service;
 
+import jakarta.persistence.EntityManager;
+import jakarta.transaction.Transactional;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -10,7 +12,9 @@ import org.example.interactionservice.dto.response.PostResponse;
 import org.example.interactionservice.dto.response.UserBasicResponse;
 import org.example.interactionservice.entity.Mention;
 import org.example.interactionservice.entity.Post;
+import org.example.interactionservice.entity.PostReadUser;
 import org.example.interactionservice.entity.RecommendedPost;
+import org.example.interactionservice.repository.PostReadUserRepository;
 import org.example.interactionservice.repository.PostRepository;
 import org.example.interactionservice.service.interfaces.IFeedService;
 import org.springframework.data.domain.Page;
@@ -29,13 +33,16 @@ public class FeedService implements IFeedService {
   PostRepository postRepo;
   AuthClient authClient;
   RecommendationClient recommendationClient;
+  PostReadUserRepository postReadUserRepository;
+  EntityManager entityManager;
 
   @Override
+  @Transactional
   public Page<PostResponse> getFeed(Pageable pageable) {
     Long currentUserId = ContextUser.get().getUserId();
 
     // ============= PART 1: LẤY FEED GỐC TỪ POSTS ============= //
-    Page<Post> basePage = postRepo.findPublicFeed(pageable);
+    Page<Post> basePage = postRepo.findPublicFeed(currentUserId, pageable);
     List<Post> basePosts = basePage.getContent();
 
     // ============= PART 2: LẤY RECOMMEND TỪ PYTHON (OPTIONAL) ============= //
@@ -98,6 +105,30 @@ public class FeedService implements IFeedService {
     List<PostResponse> combined = new ArrayList<>();
     combined.addAll(recommendedResponses);
     combined.addAll(baseResponses);
+
+    // ============= PART 6: MARK POSTS AS READ ============= //
+    List<Long> postIds = combined.stream()
+            .map(PostResponse::getId)
+            .toList();
+
+    // Lấy các record đã tồn tại để tránh insert trùng
+    Set<Long> alreadyReadPostIds = postReadUserRepository
+            .findPostIdsByUserIdAndPostIdIn(currentUserId, postIds);
+
+    List<PostReadUser> toSave = postIds.stream()
+            .filter(pid -> !alreadyReadPostIds.contains(pid))
+            .map(pid -> PostReadUser.builder()
+                    .userId(currentUserId)
+                    .post(entityManager.getReference(Post.class, pid))
+                    .build())
+            .toList();
+
+    if (!toSave.isEmpty()) {
+      postReadUserRepository.insertIgnoreBatch(
+              currentUserId,
+              postIds.toArray(Long[]::new)
+      );
+    }
 
     // totalElements bạn có thể quyết định:
     // - Nếu muốn chuẩn: dùng basePage.getTotalElements() + rec.size()

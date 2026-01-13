@@ -75,6 +75,11 @@ public class Post extends BaseEntityWithUpdate {
   @ToString.Exclude
   Set<Post> sharedPosts = new HashSet<>();
 
+  @Builder.Default
+  @OneToMany(mappedBy = "post", fetch = FetchType.LAZY)
+  @ToString.Exclude
+  Set<PostReadUser> postReadUsers = new HashSet<>();
+
   public PostResponse toPostResponse(
     UserBasicResponse owner,
     List<UserBasicResponse> taggedUsers,
