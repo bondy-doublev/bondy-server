@@ -3,7 +3,7 @@ version: "3.9"
 services:
   ### DATABASE ###
   postgres:
-    image: postgres:15
+    image: pgvector/pgvector:pg17
     container_name: postgres
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
